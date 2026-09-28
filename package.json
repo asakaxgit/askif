@@ -2,10 +2,10 @@
   "name": "askif-monorepo",
   "private": true,
   "description": "Let Jev decide. Monorepo for askif and its backend packages.",
-  "packageManager": "pnpm@10.34.5",
+  "packageManager": "pnpm@12.6.0",
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "build": "pnpm --filter askif run build && pnpm --filter @askif/jev run build",
