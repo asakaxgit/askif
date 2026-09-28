@@ -15,9 +15,12 @@
     "docs": "embedme README.md",
     "docs:check": "embedme --verify README.md",
     "check": "pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run docs:check",
-    "example": "pnpm --filter @askif/jev run example"
+    "example": "pnpm --filter @askif/jev run example",
+    "changeset": "changeset",
+    "release": "pnpm run build && changeset publish"
   },
   "devDependencies": {
+    "@changesets/cli": "^3.0.3",
     "@types/node": "^26.6.3",
     "embedme": "^1.22.1",
     "eslint": "^10.11.0",
