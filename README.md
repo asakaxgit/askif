@@ -6,6 +6,10 @@ Typed decisions for your code: `ask.if`, `ask.switch`, `ask.score`.
 
 ```ts
 import { ask } from "askif";
+```
+
+```ts
+// examples/basic.ts#L5-L7
 
 await ask.if("cat", "is animal", () => {
   console.log("cat is animal");
@@ -25,13 +29,26 @@ export TYPESAFE_API_KEY=...
 
 Node 20 or newer. Run it on a server: the TypeSafe SDK refuses to run in a browser, where your API key would be exposed.
 
+## Examples
+
+Runnable examples for everything below live in [`examples/`](./examples). Most of them use the [mock backend](#backends), so they need no API key:
+
+```sh
+npx tsx examples/if.ts
+```
+
+See [`examples/README.md`](./examples/README.md) for the full list.
+
 ## `ask.if`: yes or no
 
 ```ts
-await ask
-  .if(ticket, "the customer is asking for a human agent", () => routeToAgent())
-  .else(() => routeToBot())
-  .unsure(() => sendToReview());
+// examples/if.ts#L40-L44
+
+const ticket = "I've asked three times and nobody has helped. Get me a real person.";
+const ticketResult = await ask
+  .if(ticket, "the customer is asking for a human agent", () => console.log("routed to a human agent"))
+  .else(() => console.log("routed to the bot"))
+  .unsure(() => console.log("sent for review"));
 ```
 
 - Without `.unsure()`, the `then` handler runs when the probability is above `threshold` (default 0.5).
@@ -40,24 +57,36 @@ await ask
 For a plain `if`, use `ask.is`. For the raw number, use `ask.probability`:
 
 ```ts
-if (await ask.is("penguin", "can fly")) { ... }
+// examples/if.ts#L83-L87
+
+if (await ask.is("penguin", "can fly")) console.log("penguin can fly");
+else console.log("penguin can't fly");
+
+// ask.probability: the raw number, when you want to do your own thing with it.
 const p = await ask.probability("penguin", "can fly"); // 0..1
 ```
 
 ## `ask.switch`: one of several options
 
 ```ts
-const team = await ask
-  .switch(ticket, "Which team should handle this?")
-  .case("returns", "Exchanges, wrong or damaged items", () => ...)
-  .case("shipping", "Delivery status, delays, lost packages", () => ...)
-  .case("billing", "Charges, invoices, payment problems", () => ...)
-  .other(() => ...)
-  .unsure(() => ...);
+// examples/switch.ts#L17-L29
 
-team.choice;  // "returns" | "shipping" | "billing" | "other"
-team.ranking; // every option, most likely first
+const ticket = "Shoes arrived in the wrong size. Also I was charged twice.";
+
+// Basic case: the most likely option's handler runs. The chain resolves to a
+// typed result: `choice` is narrowed to the declared keys.
+const basicAsk = createAsk({ backend: choiceBackend({ returns: 0.61, billing: 0.35, shipping: 0.04 }) });
+const team = await basicAsk
+  .switch(ticket, "Which team should handle this?")
+  .case("returns", "Exchanges, wrong or damaged items", () => console.log("→ returns team"))
+  .case("shipping", "Delivery status, delays, lost packages", () => console.log("→ shipping team"))
+  .case("billing", "Charges, invoices, payment problems", () => console.log("→ billing team"));
+
+console.log("choice:", team.choice); // "returns" | "shipping" | "billing"
+console.log("ranking:", team.ranking); // every option, most likely first
 ```
+
+`.other()` and `.unsure()` chain onto the same call — see [`examples/switch.ts`](./examples/switch.ts) for both in action.
 
 - The option key and its description are both sent to the model. A key that explains itself needs no description: `.case("calm")`.
 - `.other()` adds an option the model can pick when nothing else fits.
@@ -66,12 +95,19 @@ team.ranking; // every option, most likely first
 ## `ask.score`: a position on a scale
 
 ```ts
-await ask
-  .score(bug, "How severe is the reported issue?")
-  .level("Cosmetic; no impact to functionality", () => ...)
-  .level("Broken or degraded feature, but workaround exists", () => ...)
-  .level("Blocking issue; no workaround exists", () => page())
-  .unsure(() => ...);
+// examples/score.ts#L16-L26
+
+const COSMETIC = "Cosmetic; no impact to functionality";
+const WORKAROUND = "Broken or degraded feature, but workaround exists";
+const BLOCKING = "Blocking issue; no workaround exists";
+
+// Basic case: the handler for the most likely level runs.
+const basicAsk = createAsk({ backend: scaleBackend([0, 0.57, 0.43]) });
+const basicResult = await basicAsk
+  .score("The export button crashes the settings page in Safari. Works in Chrome.", "How severe?")
+  .level(COSMETIC, () => console.log("→ backlog"))
+  .level(WORKAROUND, () => console.log("→ this sprint"))
+  .level(BLOCKING, () => console.log("→ page on-call"));
 ```
 
 - Levels go from the low end to the high end, 2 to 10 of them.
@@ -81,10 +117,16 @@ await ask
 Long descriptions can get a short key, and a description can be structured:
 
 ```ts
-.level("workaround", {
-  what: "Broken or degraded feature, but workaround exists",
-  examples: ["export fails in one browser but works in another"],
-})
+// examples/score.ts#L65-L72
+
+// Long descriptions can get a short key, and a description can be structured,
+// reusing the same COSMETIC / WORKAROUND / BLOCKING descriptions as above.
+const structuredAsk = createAsk({ backend: scaleBackend([0, 0, 1]) });
+const structuredResult = await structuredAsk
+  .score("Cannot log in at all", "How severe?")
+  .level("cosmetic", COSMETIC)
+  .level("workaround", { what: WORKAROUND, examples: ["export fails in one browser but works in another"] })
+  .level("blocking", BLOCKING);
 ```
 
 ## Results
@@ -92,11 +134,15 @@ Long descriptions can get a short key, and a description can be structured:
 Every chain can be awaited. It resolves after the handler finishes, with what happened:
 
 ```ts
-const r = await ask.score(bug, "How severe?").level("low").level("high");
-r.level;      // "low" | "high"
-r.branch;     // "level" | "unsure"
-r.confidence; // 0..1
+// examples/score.ts#L36-L39
+
+const resultAsk = createAsk({ backend: scaleBackend([0.3, 0.7]) });
+const bug = "Cannot save changes to the profile page.";
+const r = await resultAsk.score(bug, "How severe?").level("low").level("high");
+console.log(r.level, r.branch, r.confidence);
 ```
+
+`r.level`, `r.branch`, and `r.confidence` are all available on the resolved result.
 
 Handlers receive the same result, so a handler can look at the runner-up or the probabilities.
 
@@ -109,6 +155,12 @@ A question is sent on the next microtask, once the chain is complete. Every `.ca
 Calls about the **same state** made in the same tick go out as one request. Jev answers them in parallel, so extra questions barely add time:
 
 ```ts
+// examples/batching.ts#L24-L32
+
+const order = { id: "A-1", country: "DE" };
+const flag = () => console.log("flag for review");
+const addCustoms = () => console.log("add customs form");
+
 await Promise.all([
   ask.if(order, "looks fraudulent", flag),
   ask.if(order, "ships internationally", addCustoms),
@@ -119,8 +171,13 @@ await Promise.all([
 ## Configuration
 
 ```ts
+// examples/configuration.ts#L23-L28
+
 ask.configure({ threshold: 0.6, minConfidence: 0.4 });
 
+// Per-call: override the instance default just for this one call.
+const state = "Buy now, 90% off, click this link!!!";
+const onSpam = () => console.log("flagged as spam");
 await ask.if(state, "is spam", onSpam, { threshold: 0.9 }); // per call
 ```
 
@@ -138,10 +195,14 @@ The default `ask` uses TypeSafe with `jev-latest`. Make your own instance for a 
 
 ```ts
 import { createAsk, typesafe } from "askif";
+```
+
+```ts
+// examples/backends.ts#L12-L17
 
 const ask = createAsk({ backend: typesafe({ model: "jev-1.13" }) });
 
-// Through OpenRouter
+// Through OpenRouter.
 const viaOpenRouter = createAsk({
   backend: typesafe({ apiKey: process.env.OPENROUTER_API_KEY, baseURL: "https://openrouter.ai/api" }),
 });
@@ -153,10 +214,15 @@ For tests, `mock` answers questions locally and records every call:
 
 ```ts
 import { createAsk, mock } from "askif";
+```
+
+```ts
+// examples/backends.ts#L24-L27
 
 const backend = mock(() => ({ kind: "yesno", probability: 0.9 }));
-const ask = createAsk({ backend });
-backend.calls; // what was asked
+const mockAsk = createAsk({ backend });
+await mockAsk.is("cat", "is animal");
+console.log(backend.calls); // what was asked
 ```
 
 ## Confidence
@@ -168,10 +234,23 @@ For `ask.switch` and `ask.score`, askif uses the backend's own confidence when i
 Errors are standard `Error` objects with a `code`:
 
 ```ts
-import { isAskError } from "askif";
+import { createAsk, isAskError, mock } from "askif";
+```
 
-try { ... } catch (error) {
+```ts
+// examples/errors.ts#L8-L19
+
+const backend = mock(() => {
+  throw new Error("network timeout");
+});
+const ask = createAsk({ backend });
+
+let caught: unknown;
+try {
+  await ask.is("cat", "is animal");
+} catch (error) {
   if (isAskError(error) && error.code === "BACKEND_FAILED") console.error(error.cause);
+  caught = error;
 }
 ```
 
@@ -204,9 +283,11 @@ import { ask as decide } from "askif";
 
 ```sh
 npm install
-npm run check   # lint + typecheck + tests (no API key needed)
+npm run check   # lint + typecheck + tests + docs check (no API key needed)
 npm run build
 ```
+
+Some code blocks in this README are embedded from `examples/` with [embedme](https://github.com/zakhenry/embedme), so they can't drift from the actual, tested behavior — look for a `// examples/*.ts` comment as the first line of a block. If you change one of those files, run `npm run docs` to refresh the embedded copies before committing; `npm run docs:check` (part of `npm run check`, and enforced in CI) fails if they're out of sync.
 
 The library's source follows a few conventions, enforced by ESLint: `type` instead of `interface`, unions instead of `enum`, arrow functions only, no classes, and no `as` casts (`as const` and `satisfies` are fine).
 
