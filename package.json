@@ -1,0 +1,57 @@
+{
+  "name": "askif",
+  "version": "0.1.0",
+  "description": "Let Jev decide. Typed decisions for your code: ask.if, ask.switch, ask.score.",
+  "keywords": [
+    "jev",
+    "typesafe",
+    "system-one",
+    "ai",
+    "decision",
+    "classification",
+    "control-flow"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "test": "node --import tsx --test \"test/**/*.test.ts\"",
+    "check": "npm run lint && npm run typecheck && npm test",
+    "prepublishOnly": "npm run check && npm run build",
+    "example": "tsx examples/basic.ts"
+  },
+  "peerDependencies": {
+    "@typesafe-ai/sdk": ">=0.6.0"
+  },
+  "peerDependenciesMeta": {
+    "@typesafe-ai/sdk": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "@typesafe-ai/sdk": "^0.6.0",
+    "eslint": "^10.11.0",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.70.1"
+  }
+}
