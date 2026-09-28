@@ -4,12 +4,14 @@
 
 Typed decisions for your code: `ask.if`, `ask.switch`, `ask.score`.
 
+`askif` is the provider-neutral toolkit: the chain logic, the `Backend` contract, and a `mock` backend for tests. [`@askif/jev`](./packages/jev) is the batteries-included bundle for TypeSafe's Jev, with a ready-to-use `ask`:
+
 ```ts
-import { ask } from "askif";
+import { ask } from "@askif/jev";
 ```
 
 ```ts
-// examples/basic.ts#L5-L7
+// packages/jev/examples/basic.ts#L5-L7
 
 await ask.if("cat", "is animal", () => {
   console.log("cat is animal");
@@ -23,26 +25,24 @@ Each call asks [Jev](https://typesafe.ai/blog/introducing-system-one-models-and-
 ## Install
 
 ```sh
-npm install askif @typesafe-ai/sdk
+npm install askif @askif/jev
 export TYPESAFE_API_KEY=...
 ```
 
-Node 20 or newer. Run it on a server: the TypeSafe SDK refuses to run in a browser, where your API key would be exposed.
+Node 20 or newer. Run it on a server: the TypeSafe SDK refuses to run in a browser, where your API key would be exposed. Building your own backend instead of using Jev? `npm install askif` alone is enough — see [Backends](#backends).
 
 ## Examples
 
-Runnable examples for everything below live in [`examples/`](./examples). Most of them use the [mock backend](#backends), so they need no API key:
+Runnable examples for everything below live alongside each package: [`packages/askif/examples/`](./packages/askif/examples) runs offline against the `mock` backend, and [`packages/jev/examples/`](./packages/jev/examples) has the live quickstart (needs `TYPESAFE_API_KEY`):
 
 ```sh
-npx tsx examples/if.ts
+npx tsx packages/askif/examples/if.ts
 ```
-
-See [`examples/README.md`](./examples/README.md) for the full list.
 
 ## `ask.if`: yes or no
 
 ```ts
-// examples/if.ts#L40-L44
+// packages/askif/examples/if.ts#L40-L44
 
 const ticket = "I've asked three times and nobody has helped. Get me a real person.";
 const ticketResult = await ask
@@ -57,7 +57,7 @@ const ticketResult = await ask
 For a plain `if`, use `ask.is`. For the raw number, use `ask.probability`:
 
 ```ts
-// examples/if.ts#L83-L87
+// packages/askif/examples/if.ts#L83-L87
 
 if (await ask.is("penguin", "can fly")) console.log("penguin can fly");
 else console.log("penguin can't fly");
@@ -69,7 +69,7 @@ const p = await ask.probability("penguin", "can fly"); // 0..1
 ## `ask.switch`: one of several options
 
 ```ts
-// examples/switch.ts#L17-L29
+// packages/askif/examples/switch.ts#L17-L29
 
 const ticket = "Shoes arrived in the wrong size. Also I was charged twice.";
 
@@ -86,7 +86,7 @@ console.log("choice:", team.choice); // "returns" | "shipping" | "billing"
 console.log("ranking:", team.ranking); // every option, most likely first
 ```
 
-`.other()` and `.unsure()` chain onto the same call — see [`examples/switch.ts`](./examples/switch.ts) for both in action.
+`.other()` and `.unsure()` chain onto the same call — see [`packages/askif/examples/switch.ts`](./packages/askif/examples/switch.ts) for both in action.
 
 - The option key and its description are both sent to the model. A key that explains itself needs no description: `.case("calm")`.
 - `.other()` adds an option the model can pick when nothing else fits.
@@ -95,7 +95,7 @@ console.log("ranking:", team.ranking); // every option, most likely first
 ## `ask.score`: a position on a scale
 
 ```ts
-// examples/score.ts#L16-L26
+// packages/askif/examples/score.ts#L16-L26
 
 const COSMETIC = "Cosmetic; no impact to functionality";
 const WORKAROUND = "Broken or degraded feature, but workaround exists";
@@ -117,7 +117,7 @@ const basicResult = await basicAsk
 Long descriptions can get a short key, and a description can be structured:
 
 ```ts
-// examples/score.ts#L65-L72
+// packages/askif/examples/score.ts#L65-L72
 
 // Long descriptions can get a short key, and a description can be structured,
 // reusing the same COSMETIC / WORKAROUND / BLOCKING descriptions as above.
@@ -134,7 +134,7 @@ const structuredResult = await structuredAsk
 Every chain can be awaited. It resolves after the handler finishes, with what happened:
 
 ```ts
-// examples/score.ts#L36-L39
+// packages/askif/examples/score.ts#L36-L39
 
 const resultAsk = createAsk({ backend: scaleBackend([0.3, 0.7]) });
 const bug = "Cannot save changes to the profile page.";
@@ -155,7 +155,7 @@ A question is sent on the next microtask, once the chain is complete. Every `.ca
 Calls about the **same state** made in the same tick go out as one request. Jev answers them in parallel, so extra questions barely add time:
 
 ```ts
-// examples/batching.ts#L24-L32
+// packages/askif/examples/batching.ts#L24-L32
 
 const order = { id: "A-1", country: "DE" };
 const flag = () => console.log("flag for review");
@@ -171,7 +171,7 @@ await Promise.all([
 ## Configuration
 
 ```ts
-// examples/configuration.ts#L23-L28
+// packages/askif/examples/configuration.ts#L23-L28
 
 ask.configure({ threshold: 0.6, minConfidence: 0.4 });
 
@@ -191,38 +191,45 @@ await ask.if(state, "is spam", onSpam, { threshold: 0.9 }); // per call
 
 ## Backends
 
-The default `ask` uses TypeSafe with `jev-latest`. Make your own instance for a different model or endpoint:
+A backend is any object that answers yes/no, choice, and scale questions with probabilities. `@askif/jev`'s default `ask` uses Jev's `jev-latest` model. Make your own instance for a different model or endpoint:
 
 ```ts
-import { createAsk, typesafe } from "askif";
+import { createAsk } from "askif";
+import { jev } from "@askif/jev";
 ```
 
 ```ts
-// examples/backends.ts#L12-L17
+// packages/jev/examples/backends.ts#L11-L18
 
-const ask = createAsk({ backend: typesafe({ model: "jev-1.13" }) });
+// The default `ask` uses jev-latest. Make your own instance for a different
+// model or endpoint.
+const custom = createAsk({ backend: jev({ model: "jev-1.13" }) });
 
 // Through OpenRouter.
 const viaOpenRouter = createAsk({
-  backend: typesafe({ apiKey: process.env.OPENROUTER_API_KEY, baseURL: "https://openrouter.ai/api" }),
+  backend: jev({ apiKey: process.env.OPENROUTER_API_KEY, baseURL: "https://openrouter.ai/api" }),
 });
 ```
 
-A backend is any object that answers yes/no, choice, and scale questions with probabilities. See the `Backend` type to connect another model.
+See the `Backend` type (from `askif`) to connect another model entirely — `@askif/jev` is just one implementation of it.
 
-For tests, `mock` answers questions locally and records every call:
+For tests, `mock` (from `askif`, no `@askif/jev` needed) answers questions locally and records every call:
 
 ```ts
 import { createAsk, mock } from "askif";
 ```
 
 ```ts
-// examples/backends.ts#L24-L27
+// packages/askif/examples/backends.ts#L10-L17
 
+// A backend is any object that answers yes/no, choice, and scale questions
+// with probabilities. `mock` answers questions locally and records every call
+// — handy for tests, or as a template for a real backend.
 const backend = mock(() => ({ kind: "yesno", probability: 0.9 }));
-const mockAsk = createAsk({ backend });
-await mockAsk.is("cat", "is animal");
+const ask = createAsk({ backend });
+await ask.is("cat", "is animal");
 console.log(backend.calls); // what was asked
+assert.equal(backend.calls.length, 1);
 ```
 
 ## Confidence
@@ -238,7 +245,7 @@ import { createAsk, isAskError, mock } from "askif";
 ```
 
 ```ts
-// examples/errors.ts#L8-L19
+// packages/askif/examples/errors.ts#L8-L19
 
 const backend = mock(() => {
   throw new Error("network timeout");
@@ -259,7 +266,7 @@ try {
 | `INVALID_QUESTION`    | Too few or too many options or levels, or a duplicate key |
 | `CHAIN_STARTED`       | A chain method was called after the question was sent   |
 | `BACKEND_FAILED`      | The backend call failed. The original error is in `cause` |
-| `BACKEND_UNAVAILABLE` | `@typesafe-ai/sdk` is not installed                     |
+| `BACKEND_UNAVAILABLE` | A backend's own dependency is missing (e.g. `@typesafe-ai/sdk` for `@askif/jev`) |
 | `BAD_RESPONSE`        | The backend's answer did not match the question         |
 
 ## Writing good questions
@@ -276,18 +283,20 @@ From TypeSafe's docs:
 `ask` is a common name. If your code already has one, rename the import:
 
 ```ts
-import { ask as decide } from "askif";
+import { ask as decide } from "@askif/jev";
 ```
 
 ## Contributing
 
+This is a [pnpm](https://pnpm.io) workspace with two packages: [`packages/askif`](./packages/askif) (the toolkit) and [`packages/jev`](./packages/jev) (the Jev bundle, depending on `askif`).
+
 ```sh
-npm install
-npm run check   # lint + typecheck + tests + docs check (no API key needed)
-npm run build
+pnpm install
+pnpm run check   # lint + typecheck + tests + docs check (no API key needed)
+pnpm run build
 ```
 
-Some code blocks in this README are embedded from `examples/` with [embedme](https://github.com/zakhenry/embedme), so they can't drift from the actual, tested behavior — look for a `// examples/*.ts` comment as the first line of a block. If you change one of those files, run `npm run docs` to refresh the embedded copies before committing; `npm run docs:check` (part of `npm run check`, and enforced in CI) fails if they're out of sync.
+Some code blocks in this README are embedded from each package's `examples/` with [embedme](https://github.com/zakhenry/embedme), so they can't drift from the actual, tested behavior — look for a `// packages/*/examples/*.ts` comment as the first line of a block. If you change one of those files, run `pnpm run docs` to refresh the embedded copies before committing; `pnpm run docs:check` (part of `pnpm run check`, and enforced in CI) fails if they're out of sync.
 
 The library's source follows a few conventions, enforced by ESLint: `type` instead of `interface`, unions instead of `enum`, arrow functions only, no classes, and no `as` casts (`as const` and `satisfies` are fine).
 

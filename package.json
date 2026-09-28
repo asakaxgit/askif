@@ -1,56 +1,24 @@
 {
-  "name": "askif",
-  "version": "0.1.0",
-  "description": "Let Jev decide. Typed decisions for your code: ask.if, ask.switch, ask.score.",
-  "keywords": [
-    "jev",
-    "typesafe",
-    "system-one",
-    "ai",
-    "decision",
-    "classification",
-    "control-flow"
-  ],
-  "license": "MIT",
+  "name": "askif-monorepo",
+  "private": true,
+  "description": "Let Jev decide. Monorepo for askif and its backend packages.",
+  "packageManager": "pnpm@11.17.0",
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    }
-  },
-  "files": [
-    "dist",
-    "src"
-  ],
-  "sideEffects": false,
   "engines": {
     "node": ">=20"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
-    "typecheck": "tsc -p tsconfig.json",
+    "build": "pnpm --filter askif run build && pnpm --filter @askif/jev run build",
+    "typecheck": "pnpm --filter askif run typecheck && pnpm --filter askif run build && pnpm --filter @askif/jev run typecheck",
     "lint": "eslint .",
-    "test": "node --import tsx --test test/*.test.ts",
+    "test": "pnpm --filter askif run build && pnpm --filter askif run test && pnpm --filter @askif/jev run test",
     "docs": "embedme README.md",
     "docs:check": "embedme --verify README.md",
-    "check": "npm run lint && npm run typecheck && npm test && npm run docs:check",
-    "prepublishOnly": "npm run check && npm run build",
-    "example": "tsx examples/basic.ts"
-  },
-  "peerDependencies": {
-    "@typesafe-ai/sdk": ">=0.6.0"
-  },
-  "peerDependenciesMeta": {
-    "@typesafe-ai/sdk": {
-      "optional": true
-    }
+    "check": "pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run docs:check",
+    "example": "pnpm --filter @askif/jev run example"
   },
   "devDependencies": {
     "@types/node": "^26.6.3",
-    "@typesafe-ai/sdk": "^0.6.0",
     "embedme": "^1.22.1",
     "eslint": "^10.11.0",
     "tsx": "^4.23.15",

@@ -1,4 +1,4 @@
-// Run with: TYPESAFE_API_KEY=... npm run example
+// Run with: TYPESAFE_API_KEY=... pnpm run example
 import { ask } from "../src/index.js";
 
 // Yes/no

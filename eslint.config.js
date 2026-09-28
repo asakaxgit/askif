@@ -4,7 +4,7 @@ import tseslint from "typescript-eslint";
 const restricted = (selector, message) => ({ selector, message });
 
 export default [
-  { ignores: ["dist/", "node_modules/"] },
+  { ignores: ["**/dist/", "**/node_modules/"] },
   ...tseslint.configs.strict,
   {
     rules: {
