@@ -33,7 +33,7 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json",
     "lint": "eslint .",
-    "test": "node --import tsx --test \"test/**/*.test.ts\"",
+    "test": "node --import tsx --test test/*.test.ts",
     "docs": "embedme README.md",
     "docs:check": "embedme --verify README.md",
     "check": "npm run lint && npm run typecheck && npm test && npm run docs:check",
