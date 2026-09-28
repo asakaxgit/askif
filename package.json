@@ -17,7 +17,7 @@
     "check": "pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run docs:check",
     "example": "pnpm --filter @askif/jev run example",
     "changeset": "changeset",
-    "release": "pnpm run build && changeset publish"
+    "release": "pnpm run build && pnpm exec tsx .github/scripts/publish.ts"
   },
   "devDependencies": {
     "@changesets/cli": "^3.0.3",

@@ -48,8 +48,8 @@ importers:
         specifier: ^0.6.0
         version: 0.6.0
       askif:
-        specifier: workspace:^
-        version: link:../askif
+        specifier: ^0.1.0
+        version: 0.1.0
     devDependencies:
       '@types/node':
         specifier: ^26.6.3
@@ -460,6 +460,10 @@ packages:
   ansi-styles@4.3.0:
     resolution: {integrity: sha512-zbB9rCJAT1rbjiVDb2hqKFHNYLxgtk8NURxZ3IZwD3F6NtxbXZQCnnSi1Lkx+IDohdPlFp222wVALIheZJQSEg==}
     engines: {node: '>=8'}
+
+  askif@0.1.0:
+    resolution: {integrity: sha512-6wR/bHx/kiGauGXdyp8LcnfdByoFAfibf/kSBWczl615lYQjBQ/prXKtdBx5Sqfzo56woHCeJ1djRZCBTsGs5w==}
+    engines: {node: '>=20'}
 
   balanced-match@1.0.2:
     resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
@@ -1254,6 +1258,8 @@ snapshots:
   ansi-styles@4.3.0:
     dependencies:
       color-convert: 2.0.1
+
+  askif@0.1.0: {}
 
   balanced-match@1.0.2: {}
 
