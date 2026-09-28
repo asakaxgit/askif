@@ -6,10 +6,10 @@ import type {
   TypeSafeClient,
   TypeSafeClientConfig,
 } from "@typesafe-ai/sdk";
-import { makeAskError } from "./errors.js";
-import type { Answer, Backend, Json, Question } from "./types.js";
+import { createAsk, makeAskError } from "askif";
+import type { Answer, Backend, Json, Question } from "askif";
 
-export type TypesafeOptions = TypeSafeClientConfig & {
+export type JevOptions = TypeSafeClientConfig & {
   /** Model id, e.g. "jev-1.13". Default: the client's default, "jev-latest". */
   readonly model?: string;
   /** Use an existing client instead of creating one. */
@@ -102,7 +102,7 @@ const fromTypesafe = (
  * The SDK (`@typesafe-ai/sdk`) is loaded on the first call, so it is only
  * needed when this backend is actually used.
  */
-export const typesafe = (options: TypesafeOptions = {}): Backend => {
+export const jev = (options: JevOptions = {}): Backend => {
   const { model, client, ...clientConfig } = options;
   let clientPromise: Promise<TypeSafeClient> | undefined;
 
@@ -111,7 +111,7 @@ export const typesafe = (options: TypesafeOptions = {}): Backend => {
     const sdk = await import("@typesafe-ai/sdk").catch((error: unknown) => {
       throw makeAskError(
         "BACKEND_UNAVAILABLE",
-        "The TypeSafe backend needs @typesafe-ai/sdk. Install it with: npm install @typesafe-ai/sdk",
+        "The Jev backend needs @typesafe-ai/sdk. Install it with: npm install @typesafe-ai/sdk",
         error,
       );
     });
@@ -126,7 +126,7 @@ export const typesafe = (options: TypesafeOptions = {}): Backend => {
     }));
 
   return {
-    name: "typesafe",
+    name: "jev",
     limits: LIMITS,
     decide: async (state, questions) => {
       const typesafeQuestions: TypeSafeQuestions = Object.fromEntries(
@@ -143,3 +143,9 @@ export const typesafe = (options: TypesafeOptions = {}): Backend => {
     },
   };
 };
+
+/**
+ * The default instance, backed by TypeSafe's Jev.
+ * Reads TYPESAFE_API_KEY from the environment on first use.
+ */
+export const ask = createAsk({ backend: jev() });

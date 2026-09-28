@@ -1,6 +1,6 @@
 // Runs the offline examples as integration tests, so the README's examples
-// can't silently drift from actual behavior. `examples/basic.ts` is excluded:
-// it talks to the live TypeSafe API and needs a real API key.
+// can't silently drift from actual behavior. The live Jev quickstart lives in
+// @askif/jev's own examples/basic.ts, which needs a real API key.
 import { test } from "node:test";
 
 test("examples/if.ts", async () => {

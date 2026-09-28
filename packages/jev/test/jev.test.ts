@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { TypeSafeClient } from "@typesafe-ai/sdk";
-import { createAsk, typesafe } from "../src/index.js";
-import type { Json } from "../src/index.js";
+import { createAsk } from "askif";
+import type { Json } from "askif";
+import { jev } from "../src/index.js";
 
 const isRecord = (value: Json | undefined): value is { [key: string]: Json } =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -40,7 +41,7 @@ test("the TypeSafe backend sends and reads the System One format", async () => {
       );
     },
   });
-  const ask = createAsk({ backend: typesafe({ client, model: "jev-1.13" }) });
+  const ask = createAsk({ backend: jev({ client, model: "jev-1.13" }) });
 
   const [odd, team, severity] = await Promise.all([
     ask.is(7, "is odd"),
