@@ -2,7 +2,7 @@
   "name": "askif-monorepo",
   "private": true,
   "description": "Let Jev decide. Monorepo for askif and its backend packages.",
-  "packageManager": "pnpm@11.17.0",
+  "packageManager": "pnpm@10.34.5",
   "type": "module",
   "engines": {
     "node": ">=20"
