@@ -44,12 +44,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
 
       - name: Generate changeset
-        run: node .github/scripts/create-changeset.mjs "${{ inputs.packages }}" "${{ inputs.bump }}" "${{ inputs.summary }}"
+        run: pnpm exec tsx .github/scripts/create-changeset.ts "${{ inputs.packages }}" "${{ inputs.bump }}" "${{ inputs.summary }}"
 
       - name: Open a PR with the changeset
         uses: peter-evans/create-pull-request@v7
