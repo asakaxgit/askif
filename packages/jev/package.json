@@ -10,6 +10,11 @@
     "ai"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/asakaxgit/askif.git",
+    "directory": "packages/jev"
+  },
   "type": "module",
   "publishConfig": {
     "access": "public"

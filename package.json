@@ -9,15 +9,18 @@
   },
   "scripts": {
     "build": "pnpm --filter askif run build && pnpm --filter @askif/jev run build",
-    "typecheck": "pnpm --filter askif run typecheck && pnpm --filter askif run build && pnpm --filter @askif/jev run typecheck",
+    "typecheck": "pnpm --filter askif run typecheck && pnpm --filter askif run build && pnpm --filter @askif/jev run typecheck && tsc -p .github/scripts/tsconfig.json",
     "lint": "eslint .",
     "test": "pnpm --filter askif run build && pnpm --filter askif run test && pnpm --filter @askif/jev run test",
     "docs": "embedme README.md",
     "docs:check": "embedme --verify README.md",
     "check": "pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run docs:check",
-    "example": "pnpm --filter @askif/jev run example"
+    "example": "pnpm --filter @askif/jev run example",
+    "changeset": "changeset",
+    "release": "pnpm run build && changeset publish"
   },
   "devDependencies": {
+    "@changesets/cli": "^3.0.3",
     "@types/node": "^26.6.3",
     "embedme": "^1.22.1",
     "eslint": "^10.11.0",

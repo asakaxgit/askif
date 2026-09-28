@@ -300,6 +300,8 @@ Some code blocks in this README are embedded from each package's `examples/` wit
 
 The library's source follows a few conventions, enforced by ESLint: `type` instead of `interface`, unions instead of `enum`, arrow functions only, no classes, and no `as` casts (`as const` and `satisfies` are fine).
 
+Publishing is automated via [Changesets](https://github.com/changesets/changesets) — see [`RELEASING.md`](./RELEASING.md).
+
 ## License
 
 MIT

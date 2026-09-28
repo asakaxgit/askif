@@ -1,0 +1,71 @@
+name: Bump version
+
+# Manual trigger only: generates a changeset for the selected package(s) and
+# opens a PR with it — this is the non-interactive equivalent of running
+# `pnpm changeset` locally and answering its prompts. It doesn't touch any
+# package.json or publish anything itself: merging the PR this opens is what
+# makes release.yml notice the pending changeset and open/update the real
+# "Version Packages" PR (the one with the actual version bumps and
+# changelog entries), which is a separate review step before anything
+# reaches npm.
+on:
+  workflow_dispatch:
+    inputs:
+      packages:
+        description: Which package(s) to bump
+        type: choice
+        options:
+          - askif
+          - "@askif/jev"
+          - both
+        default: both
+        required: true
+      bump:
+        description: Version bump type
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
+        required: true
+      summary:
+        description: One-line changelog summary for this bump
+        type: string
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-changeset:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Generate changeset
+        run: pnpm exec tsx .github/scripts/create-changeset.ts "${{ inputs.packages }}" "${{ inputs.bump }}" "${{ inputs.summary }}"
+
+      - name: Open a PR with the changeset
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: "chore: ${{ inputs.bump }} version bump (${{ inputs.packages }}) — ${{ inputs.summary }}"
+          title: "chore: ${{ inputs.bump }} version bump (${{ inputs.packages }}) — ${{ inputs.summary }}"
+          body: |
+            Adds a changeset for a **${{ inputs.bump }}** bump of **${{ inputs.packages }}**.
+
+            Merging this doesn't publish anything by itself — it makes `release.yml` open or
+            update the "Version Packages" PR with the actual version bumps and changelog
+            entries. Publishing happens when *that* PR is merged.
+          branch: version-bump/${{ github.run_id }}
+          add-paths: .changeset
