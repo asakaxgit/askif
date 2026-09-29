@@ -2,6 +2,12 @@ import type { ClientOptions, OpenAI } from "openai";
 import { createAsk, makeAskError } from "askif";
 import type { Answer, Backend, Json, Question } from "askif";
 
+// Re-exported so a caller connecting to Azure OpenAI doesn't need a separate
+// `npm install openai` just for this one class — see the "Other endpoints"
+// section of this package's README for how to use it with `openai({ client })`.
+export { AzureOpenAI } from "openai";
+export type { AzureClientOptions } from "openai";
+
 type CreateParams = OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming;
 type ReasoningEffort = OpenAI.Chat.Completions.ChatCompletionReasoningEffort;
 type ChatCompletion = OpenAI.Chat.Completions.ChatCompletion;

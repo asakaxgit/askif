@@ -1,6 +1,6 @@
 # @askif/openai
 
-The [askif](https://www.npmjs.com/package/askif) backend for OpenAI, with a ready-to-use `ask`. Also works with any OpenAI-compatible API (OpenRouter, self-hosted servers) via `baseURL`.
+The [askif](https://www.npmjs.com/package/askif) backend for OpenAI, with a ready-to-use `ask`. Also works with OpenRouter, Google Cloud's Vertex AI, Azure OpenAI, and self-hosted OpenAI-compatible servers — see [Other endpoints](#other-endpoints).
 
 ```sh
 npm install askif @askif/openai
@@ -32,6 +32,46 @@ Full documentation, the `ask.if`/`ask.switch`/`ask.score` guide, and runnable ex
   by default in that case, since non-reasoning or third-party models can reject it.
 - `params` passes extra fields (`temperature`, `reasoning_effort`, etc.) through to every request,
   applied after this backend's own defaults so they can override them.
+
+## Other endpoints
+
+`baseURL` (from `ClientOptions`, passed straight through) switches to any OpenAI-compatible API
+that takes a plain bearer API key — including [OpenRouter](https://openrouter.ai) and Google
+Cloud's [Vertex AI](https://cloud.google.com/vertex-ai) (whose `apiKey` needs to be a short-lived
+Google Cloud access token, not a static key):
+
+```ts
+import { openai } from "@askif/openai";
+
+const viaOpenRouter = openai({
+  apiKey: process.env.OPENROUTER_API_KEY,
+  baseURL: "https://openrouter.ai/api/v1",
+  model: "openai/gpt-6-luna",
+});
+```
+
+Azure OpenAI needs a different client class, not just a different `baseURL` — its auth and request
+routing genuinely differ from plain OpenAI. `AzureOpenAI` is re-exported from this package (a real
+subclass of the SDK's own client, so no separate `npm install openai` is needed) and plugs into the
+`client` option directly:
+
+```ts
+import { AzureOpenAI, openai } from "@askif/openai";
+
+const viaAzure = openai({
+  client: new AzureOpenAI({
+    apiKey: process.env.AZURE_OPENAI_API_KEY,
+    endpoint: process.env.AZURE_OPENAI_ENDPOINT,
+    deployment: "gpt-6-luna",
+    apiVersion: "2025-04-01-preview", // check Azure's docs for your deployment's version
+  }),
+});
+```
+
+See [`examples/backends.ts`](./examples/backends.ts) for all of these together, plus the one
+caveat of using `client`: it's constructed eagerly, right there, so — unlike the `baseURL` form,
+which this package constructs lazily on first use — its own validation (real-looking credentials)
+runs immediately rather than being deferred.
 
 ## License
 
