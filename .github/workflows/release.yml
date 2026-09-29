@@ -10,7 +10,7 @@ on:
 # publishing. There is no NPM_TOKEN/NODE_AUTH_TOKEN anywhere in this file —
 # that's the point. See RELEASING.md for the one-time npm-side setup this
 # depends on (an npm Trusted Publisher configured for this exact repo and
-# workflow filename, for each of askif and @askif/jev).
+# workflow filename, for each published package).
 permissions:
   contents: write
   pull-requests: write

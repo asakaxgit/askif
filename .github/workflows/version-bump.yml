@@ -17,8 +17,9 @@ on:
         options:
           - askif
           - "@askif/jev"
-          - both
-        default: both
+          - "@askif/openai"
+          - all
+        default: all
         required: true
       bump:
         description: Version bump type
