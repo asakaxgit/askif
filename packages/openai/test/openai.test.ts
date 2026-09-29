@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { APIError, OpenAI } from "openai";
+import { APIError, BedrockOpenAI, OpenAI } from "openai";
 import { confidenceOf, createAsk, isAskError } from "askif";
 import type { Json } from "askif";
 import { openai } from "../src/index.js";
@@ -289,4 +289,33 @@ test("calling decide directly fires one request per question", async () => {
   assert.equal(bodies.length, 2);
   assert.deepEqual(answers["q0"], { kind: "yesno", probability: 0.9 });
   assert.deepEqual(answers["q1"], { kind: "yesno", probability: 0.9 });
+});
+
+test("a BedrockOpenAI client keeps its endpoint and bearer auth, and the given model id", async () => {
+  const seen: Array<{ url: string; authorization: string | null; body: Json }> = [];
+  const client = new BedrockOpenAI({
+    apiKey: "bedrock-key",
+    baseURL: "https://bedrock-runtime.us-east-1.amazonaws.com/openai/v1",
+    maxRetries: 0,
+    fetch: async (url, init) => {
+      const body: Json = JSON.parse(String(init?.body));
+      seen.push({ url: String(url), authorization: new Headers(init?.headers).get("authorization"), body });
+      return completionResponse(JSON.stringify({ probability: 0.8 }));
+    },
+  });
+  // Bedrock's gpt-oss models are reasoning models: "none" isn't one of their efforts, so it's set explicitly.
+  const ask = createAsk({
+    backend: openai({ client, model: "openai.gpt-oss-120b-1:0", params: { reasoning_effort: "low" } }),
+  });
+
+  assert.equal(await ask.is("cat", "is animal"), true);
+
+  assert.equal(seen.length, 1);
+  const [request] = seen;
+  assert.ok(request !== undefined && isRecord(request.body));
+  assert.equal(request.url, "https://bedrock-runtime.us-east-1.amazonaws.com/openai/v1/chat/completions");
+  assert.equal(request.authorization, "Bearer bedrock-key");
+  assert.equal(request.body["model"], "openai.gpt-oss-120b-1:0");
+  assert.equal(request.body["reasoning_effort"], "low");
+  assert.equal(schemaNameOf(request.body), "yesno_answer"); // still asks for a json_schema response
 });

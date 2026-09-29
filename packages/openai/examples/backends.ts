@@ -6,7 +6,7 @@
 // Run with: npx tsx examples/backends.ts
 import assert from "node:assert/strict";
 import { createAsk } from "askif";
-import { AzureOpenAI, openai } from "../src/index.js";
+import { AzureOpenAI, BedrockOpenAI, openai } from "../src/index.js";
 
 // The default `ask` uses gpt-6-luna. Make your own instance for a different
 // model or endpoint.
@@ -61,9 +61,32 @@ const viaAzure = createAsk({
   }),
 });
 
+// Amazon Bedrock has its own client class too (`BedrockOpenAI`, also
+// re-exported, also a subclass of `OpenAI`). It authenticates with a Bedrock
+// API key (bearer token, not IAM/SigV4) and, like `AzureOpenAI`, is built
+// eagerly here.
+//
+// Two things to know:
+// - `BedrockOpenAI` derives a `bedrock-mantle` URL from `awsRegion`, but AWS
+//   recommends the `bedrock-runtime` endpoint for new applications — pass its
+//   `baseURL` explicitly to use that one.
+// - `model` is required: the default (an OpenAI model id) doesn't exist on
+//   Bedrock. gpt-oss models are reasoning models, so set an effort via `params`.
+const viaBedrock = createAsk({
+  backend: openai({
+    client: new BedrockOpenAI({
+      apiKey: process.env.AWS_BEARER_TOKEN_BEDROCK ?? "placeholder",
+      baseURL: `https://bedrock-runtime.${process.env.AWS_REGION ?? "us-east-1"}.amazonaws.com/openai/v1`,
+    }),
+    model: "openai.gpt-oss-120b-1:0",
+    params: { reasoning_effort: "low" },
+  }),
+});
+
 // None of these instances made a network call yet — that only happens on
 // first use.
 assert.equal(typeof custom.if, "function");
 assert.equal(typeof viaOpenRouter.if, "function");
 assert.equal(typeof viaVertexAI.if, "function");
 assert.equal(typeof viaAzure.if, "function");
+assert.equal(typeof viaBedrock.if, "function");

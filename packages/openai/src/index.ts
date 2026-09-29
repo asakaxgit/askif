@@ -2,11 +2,13 @@ import type { ClientOptions, OpenAI } from "openai";
 import { createAsk, makeAskError } from "askif";
 import type { Answer, Backend, Json, Question } from "askif";
 
-// Re-exported so a caller connecting to Azure OpenAI doesn't need a separate
-// `npm install openai` just for this one class — see the "Other endpoints"
-// section of this package's README for how to use it with `openai({ client })`.
-export { AzureOpenAI } from "openai";
-export type { AzureClientOptions } from "openai";
+// Re-exported so a caller connecting to Azure OpenAI or Amazon Bedrock
+// doesn't need a separate `npm install openai` just for one class — both are
+// subclasses of the SDK's own `OpenAI` client, so they plug into
+// `openai({ client })`. See the "Other endpoints" section of this package's
+// README.
+export { AzureOpenAI, BedrockOpenAI } from "openai";
+export type { AzureClientOptions, BedrockClientOptions } from "openai";
 
 type CreateParams = OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming;
 type ReasoningEffort = OpenAI.Chat.Completions.ChatCompletionReasoningEffort;

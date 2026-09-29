@@ -1,6 +1,6 @@
 # @askif/openai
 
-The [askif](https://www.npmjs.com/package/askif) backend for OpenAI, with a ready-to-use `ask`. Also works with OpenRouter, Google Cloud's Vertex AI, Azure OpenAI, and self-hosted OpenAI-compatible servers — see [Other endpoints](#other-endpoints).
+The [askif](https://www.npmjs.com/package/askif) backend for OpenAI, with a ready-to-use `ask`. Also works with OpenRouter, Google Cloud's Vertex AI, Azure OpenAI, Amazon Bedrock, and self-hosted OpenAI-compatible servers — see [Other endpoints](#other-endpoints).
 
 ```sh
 npm install askif @askif/openai
@@ -68,10 +68,37 @@ const viaAzure = openai({
 });
 ```
 
+Amazon Bedrock also has its own client class, `BedrockOpenAI` (re-exported the same way). It
+authenticates with a Bedrock API key (a bearer token — IAM/SigV4 credentials aren't supported by
+this client; `bedrockTokenProvider` can supply refreshable tokens), and `model` is required, since
+the default is an OpenAI model id that doesn't exist on Bedrock:
+
+```ts
+import { BedrockOpenAI, openai } from "@askif/openai";
+
+const viaBedrock = openai({
+  client: new BedrockOpenAI({
+    apiKey: process.env.AWS_BEARER_TOKEN_BEDROCK,
+    baseURL: "https://bedrock-runtime.us-east-1.amazonaws.com/openai/v1",
+  }),
+  model: "openai.gpt-oss-120b-1:0",
+  params: { reasoning_effort: "low" }, // gpt-oss models reason; "none" isn't one of their efforts
+});
+```
+
+- `BedrockOpenAI` derives a `bedrock-mantle` endpoint from `awsRegion` if you don't pass `baseURL`;
+  AWS recommends `bedrock-runtime` for new applications, so pass its `baseURL` as above to use that.
+  Model ids differ between the two endpoints (e.g. `openai.gpt-oss-120b-1:0` on `bedrock-runtime`,
+  `openai.gpt-oss-120b` on `bedrock-mantle`).
+- This backend depends on `response_format: json_schema` (Structured Outputs). AWS documents
+  structured outputs for open-weight models on `InvokeModel`/`Converse` and doesn't list the
+  OpenAI-compatible Chat Completions endpoints in that support table either way, so confirm your
+  model and endpoint accept it — a 400 from Bedrock on the first call is the sign they don't.
+
 See [`examples/backends.ts`](./examples/backends.ts) for all of these together, plus the one
-caveat of using `client`: it's constructed eagerly, right there, so — unlike the `baseURL` form,
-which this package constructs lazily on first use — its own validation (real-looking credentials)
-runs immediately rather than being deferred.
+caveat of using `client` (Azure and Bedrock both): it's constructed eagerly, right there, so —
+unlike the `baseURL` form, which this package constructs lazily on first use — its own validation
+(real-looking credentials) runs immediately rather than being deferred.
 
 ## License
 
