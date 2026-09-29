@@ -29,7 +29,7 @@ npm install askif @askif/jev
 export TYPESAFE_API_KEY=...
 ```
 
-Node 20 or newer. Run it on a server: the TypeSafe SDK refuses to run in a browser, where your API key would be exposed. Building your own backend instead of using Jev? `npm install askif` alone is enough — see [Backends](#backends).
+Node 22 or newer. Run it on a server: the TypeSafe SDK refuses to run in a browser, where your API key would be exposed. Building your own backend instead of using Jev? `npm install askif` alone is enough — see [Backends](#backends).
 
 ## Examples
 

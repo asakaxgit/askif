@@ -2,3 +2,5 @@ packages:
   - "packages/*"
 allowBuilds:
   esbuild: true
+minimumReleaseAgeExclude:
+  - askif@0.1.0

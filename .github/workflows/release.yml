@@ -26,22 +26,19 @@ jobs:
         with:
           fetch-depth: 0
 
-      # v11+, not this repo's daily-driver 10.34.5 (see "packageManager" in
-      # package.json, used by ci.yml and everywhere else): pnpm's npm-OIDC
-      # "trusted publishing" support for `pnpm publish` was introduced as
-      # part of pnpm 11's from-scratch publish reimplementation and never
-      # backported to the 10.x line — pnpm 10 has no code path to attempt
-      # the OIDC exchange at all. This input overrides the "packageManager"
-      # field for this one workflow only — pnpm/action-setup's `version`
-      # always takes precedence over it when both are present.
       - uses: pnpm/action-setup@v4
-        with:
-          version: 11.11.0
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
+
+      # OIDC trusted publishing is npm's own feature (>=11.5.1), not
+      # pnpm's — see .github/scripts/publish.ts's header comment for why
+      # this workflow calls `npm publish` directly instead of going through
+      # `pnpm publish`/`changeset publish`. The npm bundled with Node 22
+      # isn't guaranteed to be new enough, so update it explicitly.
+      - run: npm install -g npm@latest
 
       - run: pnpm install --frozen-lockfile
 
@@ -51,13 +48,12 @@ jobs:
       #   updating the "Version Packages" PR. Nothing is built or published.
       # - no pending changesets (that PR was just merged) -> runs `publish`,
       #   which builds fresh and publishes every package whose version
-      #   changed. `pnpm publish` rewrites `askif`'s `workspace:^` dependency
-      #   in @askif/jev to a real version as part of that (pnpm's own
-      #   publish behavior, independent of this action).
+      #   changed (via .github/scripts/publish.ts, using plain `npm
+      #   publish` per package — see that file for why).
       - name: Version or publish
         uses: changesets/action@v1
         with:
           version: pnpm changeset version
-          publish: pnpm release
+          publish: pnpm run build && pnpm exec tsx .github/scripts/publish.ts
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

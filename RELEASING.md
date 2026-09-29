@@ -6,6 +6,8 @@ OIDC-based **trusted publishing** — no `NPM_TOKEN` secret exists anywhere in t
 CI. This page covers the one-time npm-side setup that makes that possible, then the ongoing
 day-to-day flow.
 
+**The actual `npm publish` call is a custom script** ([`.github/scripts/publish.ts`](.github/scripts/publish.ts)), not `changeset publish` directly. `changeset publish` auto-detects this as a pnpm workspace and shells out to `pnpm publish` — but pnpm's OIDC trusted-publishing support works by delegating to npm internally, and has a reported, unresolved bug ([pnpm/pnpm#9812](https://github.com/pnpm/pnpm/issues/9812)) where that delegation doesn't reliably reach npm's own OIDC path even with a new-enough npm present. Calling `npm publish` ourselves, directly, sidesteps it. The script still emits the same `git-tag` events `changesets/action` expects, so GitHub releases and git tags work exactly as they would with the default `changeset publish` path.
+
 `askif` and `@askif/jev` version **independently** (not lockstep) — a changeset can bump either
 one, or both, since `.changeset/config.json` has no `fixed`/`linked` group. This is a deliberate
 difference from this author's other pnpm-workspace projects: unlike a tightly-coupled package
@@ -83,8 +85,9 @@ itself — that's step 3 onward, below, and it's the same regardless of which op
    or you can merge it right away for a fast release — your call.
 
 4. When you merge the **Version Packages** PR, `release.yml` runs again, finds no pending
-   changesets, and runs `pnpm release` (build, then `changeset publish`) — publishing every
-   package whose version changed via trusted publishing.
+   changesets, and runs `pnpm release` (build, then [`.github/scripts/publish.ts`](.github/scripts/publish.ts)) —
+   publishing every package whose version isn't on the registry yet, via `npm publish` and
+   trusted publishing.
 
 No local `npm publish`/`npm login` is needed again after the one-time bootstrap above.
 

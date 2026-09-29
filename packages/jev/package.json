@@ -35,7 +35,7 @@
   ],
   "sideEffects": false,
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "build": "tsc -p tsconfig.esm.json && tsc -p tsconfig.cjs.json && echo '{\"type\":\"commonjs\"}' > dist/cjs/package.json",
@@ -44,7 +44,7 @@
     "example": "tsx examples/basic.ts"
   },
   "dependencies": {
-    "askif": "workspace:^",
+    "askif": "^0.1.0",
     "@typesafe-ai/sdk": "^0.6.0"
   },
   "devDependencies": {
