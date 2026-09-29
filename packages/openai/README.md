@@ -50,6 +50,51 @@ const viaOpenRouter = openai({
 });
 ```
 
+### Gemini
+
+Google's [OpenAI-compatible Gemini API](https://ai.google.dev/gemini-api/docs/openai) takes a plain
+Google AI Studio API key, so it's just a `baseURL` (this is separate from Vertex AI above, which
+needs an access token). Google labels the compatibility layer beta and documents that some
+parameters are ignored, so check that `response_format` behaves as you expect for your model:
+
+```ts
+import { openai } from "@askif/openai";
+
+const viaGemini = openai({
+  apiKey: process.env.GEMINI_API_KEY,
+  baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
+  model: "gemini-2.5-flash",
+});
+```
+
+### Local servers
+
+Self-hosted servers expose the same protocol on localhost, so again it's a `baseURL`. The SDK
+insists on a non-empty `apiKey` even when the server ignores it, and `model` is whatever you've
+pulled or loaded:
+
+```ts
+import { openai } from "@askif/openai";
+
+const viaOllama = openai({
+  apiKey: "ollama",
+  baseURL: "http://localhost:11434/v1",
+  model: "llama3.3",
+});
+```
+
+| Server | Default `baseURL` | What its docs say about `response_format` |
+| --- | --- | --- |
+| [Ollama](https://docs.ollama.com/api/openai-compatibility) | `http://localhost:11434/v1` | Documents JSON mode; `json_schema` isn't listed |
+| [vLLM](https://docs.vllm.ai) | `http://localhost:8000/v1` | Supports `json_schema` (structured outputs) |
+| [LM Studio](https://lmstudio.ai/docs) | `http://localhost:1234/v1` | Supports `json_schema` |
+| [llama.cpp](https://github.com/ggml-org/llama.cpp) server | `http://localhost:8080/v1` | Documents `json_schema`, but there are reports of it not being honored on `/v1/chat/completions` |
+
+This backend depends on `response_format: json_schema` — the prompt describes the question but
+never spells out the JSON keys, so an endpoint that ignores `response_format` will most likely
+return prose or the wrong shape, surfacing as `BAD_RESPONSE`. The table reflects each project's
+documentation only; none of these has been tested live against this package.
+
 Azure OpenAI needs a different client class, not just a different `baseURL` — its auth and request
 routing genuinely differ from plain OpenAI. `AzureOpenAI` is re-exported from this package (a real
 subclass of the SDK's own client, so no separate `npm install openai` is needed) and plugs into the

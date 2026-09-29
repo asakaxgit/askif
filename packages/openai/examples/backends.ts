@@ -31,7 +31,7 @@ const viaVertexAI = createAsk({
   backend: openai({
     apiKey: process.env.GOOGLE_ACCESS_TOKEN,
     baseURL: `https://aiplatform.googleapis.com/v1/projects/${process.env.GOOGLE_CLOUD_PROJECT}/locations/us-central1/endpoints/openapi`,
-    model: "google/gemini-3-flash",
+    model: "google/gemini-3.5-flash", // check Vertex AI's docs for current ids
   }),
 });
 
@@ -83,6 +83,30 @@ const viaBedrock = createAsk({
   }),
 });
 
+// Gemini's own OpenAI-compatible API (Google AI Studio keys, not Vertex AI):
+// a plain static API key as the bearer token. Google marks this layer beta.
+const viaGemini = createAsk({
+  backend: openai({
+    apiKey: process.env.GEMINI_API_KEY,
+    baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
+    model: "gemini-2.5-flash",
+  }),
+});
+
+// Local servers speak the same protocol on localhost, so it's the same
+// `baseURL` override. Ollama ignores the key but the SDK needs a non-empty
+// one; `model` is whatever you've pulled/loaded.
+const viaOllama = createAsk({
+  backend: openai({
+    apiKey: "ollama",
+    baseURL: "http://localhost:11434/v1",
+    model: "llama3.3",
+  }),
+});
+// vLLM (http://localhost:8000/v1) and LM Studio (http://localhost:1234/v1)
+// work the same way — see the README for what each documents about
+// `response_format`, which this backend depends on.
+
 // None of these instances made a network call yet — that only happens on
 // first use.
 assert.equal(typeof custom.if, "function");
@@ -90,3 +114,5 @@ assert.equal(typeof viaOpenRouter.if, "function");
 assert.equal(typeof viaVertexAI.if, "function");
 assert.equal(typeof viaAzure.if, "function");
 assert.equal(typeof viaBedrock.if, "function");
+assert.equal(typeof viaGemini.if, "function");
+assert.equal(typeof viaOllama.if, "function");
