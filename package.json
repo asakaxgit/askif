@@ -17,6 +17,7 @@
     "check": "pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run docs:check",
     "example": "pnpm --filter @askif/jev run example",
     "changeset": "changeset",
+    "version-packages": "changeset version && pnpm install --lockfile-only",
     "release": "pnpm run build && pnpm exec tsx .github/scripts/publish.ts"
   },
   "devDependencies": {
