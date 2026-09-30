@@ -211,6 +211,8 @@ const viaOpenRouter = createAsk({
 });
 ```
 
+`@askif/jev` also works with [OpenJev](https://github.com/razorback16/openjev), an open Jev-compatible server: set `baseURL` and `model` (details in [its README](./packages/jev#other-jev-compatible-servers)).
+
 See the `Backend` type (from `askif`) to connect another model entirely — `@askif/jev` is just one implementation of it. [`@askif/openai`](./packages/openai) is another, for OpenAI and OpenAI-compatible APIs.
 
 For tests, `mock` (from `askif`, no `@askif/jev` needed) answers questions locally and records every call:

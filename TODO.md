@@ -13,6 +13,21 @@ Ideas not yet done, roughly in priority order.
 - [ ] Settle Bedrock's default mantle path (SDK's `/openai/v1` vs. AWS docs' `/v1`).
 - [ ] Keep a verified/unverified provider list in the package README once live checks exist.
 
+## Live verification (needs credentials; none run yet)
+
+| Target | Needs |
+| --- | --- |
+| OpenAI | `OPENAI_API_KEY` |
+| Azure OpenAI | a resource with a deployment: endpoint, key, deployment name, a supported `apiVersion` |
+| Vertex AI | a GCP project with Vertex enabled, `gcloud auth print-access-token`, project id |
+| Bedrock | a Bedrock API key (`AWS_BEARER_TOKEN_BEDROCK`), a region with `openai.gpt-oss-*` enabled |
+| OpenRouter / Gemini | `OPENROUTER_API_KEY` / `GEMINI_API_KEY` |
+| Ollama / vLLM / LM Studio / llama.cpp | the server running locally with a model loaded |
+| OpenJev | a Codiv key, or a GPU/Apple-silicon host running openjev |
+
+- [ ] A gated live suite (skipped unless the matching env var is set) that sends one yes/no, one
+      choice and one scale question per target, so `response_format` support is confirmed.
+
 ## More OpenAI-compatible endpoints (docs + example only, just a `baseURL`)
 
 - [ ] Hosted: Groq, Together, Fireworks, DeepInfra, Mistral, xAI, DeepSeek, Cerebras.
