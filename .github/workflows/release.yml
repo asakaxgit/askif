@@ -46,6 +46,12 @@ jobs:
       # actually runs:
       # - pending changesets in .changeset/ -> runs `version`, opening/
       #   updating the "Version Packages" PR. Nothing is built or published.
+      #   `pnpm install --lockfile-only` follows `changeset version` because
+      #   the latter bumps in-repo dependency ranges (e.g. @askif/jev's
+      #   `askif`) in package.json but not in pnpm-lock.yaml, which would fail
+      #   CI's `--frozen-lockfile` on the Version Packages PR. It resolves the
+      #   new range to the local package (`linkWorkspacePackages`), since that
+      #   version isn't on npm yet.
       # - no pending changesets (that PR was just merged) -> runs `publish`,
       #   which builds fresh and publishes every package whose version
       #   changed (via .github/scripts/publish.ts, using plain `npm
@@ -53,7 +59,7 @@ jobs:
       - name: Version or publish
         uses: changesets/action@v1
         with:
-          version: pnpm changeset version
+          version: pnpm changeset version && pnpm install --lockfile-only
           publish: pnpm run build && pnpm exec tsx .github/scripts/publish.ts
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
