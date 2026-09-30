@@ -54,6 +54,8 @@ jobs:
       #   CI's `--frozen-lockfile` on the Version Packages PR. It resolves the
       #   new range to the local package (`linkWorkspacePackages`), since that
       #   version isn't on npm yet.
+      #   (Both inputs are script names, not `a && b` chains: this action splits
+      #   them into arguments and runs no shell.)
       # - no pending changesets (that PR was just merged) -> runs `publish`,
       #   which builds fresh and publishes every package whose version
       #   changed (via .github/scripts/publish.ts, using plain `npm
@@ -62,6 +64,6 @@ jobs:
         uses: changesets/action@v1
         with:
           version: pnpm run version-packages
-          publish: pnpm run build && pnpm exec tsx .github/scripts/publish.ts
+          publish: pnpm run release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
