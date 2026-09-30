@@ -39,6 +39,8 @@ const packageDirs = readdirSync(packagesDir, { withFileTypes: true })
   .filter((entry) => entry.isDirectory())
   .map((entry) => entry.name);
 
+const failed: string[] = [];
+
 for (const dir of packageDirs) {
   const pkg = readPackageJson(dir);
   if (pkg.private) continue;
@@ -49,10 +51,24 @@ for (const dir of packageDirs) {
   }
 
   console.log(`Publishing ${pkg.name}@${pkg.version}...`);
-  execFileSync("npm", ["publish"], { cwd: `${packagesDir}${dir}`, stdio: "inherit" });
+  // Keep going if one package fails (e.g. a brand-new package with no npm
+  // Trusted Publisher yet), so the others still publish and get tagged; the
+  // job still fails at the end so it isn't missed.
+  try {
+    execFileSync("npm", ["publish"], { cwd: `${packagesDir}${dir}`, stdio: "inherit" });
+  } catch {
+    console.error(`Failed to publish ${pkg.name}@${pkg.version}`);
+    failed.push(`${pkg.name}@${pkg.version}`);
+    continue;
+  }
 
   if (outputPath !== undefined) {
     const event = { type: "git-tag", tag: `${pkg.name}@${pkg.version}`, packageName: pkg.name };
     appendFileSync(outputPath, `${JSON.stringify(event)}\n`);
   }
+}
+
+if (failed.length > 0) {
+  console.error(`Failed to publish: ${failed.join(", ")}`);
+  process.exitCode = 1;
 }
