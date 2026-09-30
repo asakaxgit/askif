@@ -39,5 +39,7 @@ Ideas not yet done, roughly in priority order.
 
 ## Release
 
-- [ ] Manual OTP `npm publish` of `@askif/openai@0.1.0`, then configure its npm Trusted Publisher
-      (see [RELEASING.md](./RELEASING.md)).
+- [x] Manual first publish of `@askif/openai@0.1.0` (done 2026-09-30).
+- [ ] Configure npm Trusted Publishers for `askif`, `@askif/jev` and `@askif/openai` (see
+      [RELEASING.md](./RELEASING.md)), then re-run the Release job to publish `askif@0.1.1` and
+      `@askif/jev@0.1.1`.
