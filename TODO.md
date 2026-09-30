@@ -7,17 +7,17 @@ Ideas not yet done, roughly in priority order.
 - [ ] Prompt-text fallback: spell out the JSON shape in the prompt (opt-in option, e.g.
       `structuredOutput: "json_schema" | "json_object" | "prompt"`), so endpoints that ignore or
       reject `response_format: json_schema` (Ollama, some llama.cpp builds) still work.
-- [ ] Live smoke test with a real `OPENAI_API_KEY` (`examples/basic.ts`); confirm no `BAD_RESPONSE`
-      on the three example scenarios.
+- [x] Live smoke test against OpenAI (gpt-6-luna, 2026-09-30): `examples/basic.ts` ran clean, no
+      `BAD_RESPONSE`; a yes/no + choice + scale batch took ~2.6 s.
 - [ ] Verify Bedrock accepts `response_format` on its OpenAI-compatible Chat Completions endpoints.
 - [ ] Settle Bedrock's default mantle path (SDK's `/openai/v1` vs. AWS docs' `/v1`).
 - [ ] Keep a verified/unverified provider list in the package README once live checks exist.
 
-## Live verification (needs credentials; none run yet)
+## Live verification (needs credentials; only OpenAI has been run so far)
 
 | Target | Needs |
 | --- | --- |
-| OpenAI | `OPENAI_API_KEY` |
+| OpenAI | `OPENAI_API_KEY` (done) |
 | Azure OpenAI | a resource with a deployment: endpoint, key, deployment name, a supported `apiVersion` |
 | Vertex AI | a GCP project with Vertex enabled, `gcloud auth print-access-token`, project id |
 | Bedrock | a Bedrock API key (`AWS_BEARER_TOKEN_BEDROCK`), a region with `openai.gpt-oss-*` enabled |
