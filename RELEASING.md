@@ -23,12 +23,10 @@ I can't do any of this myself; it needs an interactive session on npmjs.com.
    `publishConfig` in `packages/jev/package.json` and `packages/openai/package.json`; `askif`
    itself is unscoped, which defaults to public).
 
-2. **`askif` and `@askif/jev` have already been published once, by hand** (`askif@0.1.0` and
-   `@askif/jev@0.1.0`) — so this step, which trusted publishing normally requires before it can
-   be configured, is already done for them. **`@askif/openai` has not been published yet** —
-   before its Trusted Publisher can be configured, someone needs to run `npm publish` from
-   `packages/openai` once by hand (interactive, OTP-gated — not something this session can do on
-   its own).
+2. **All three packages have been published once, by hand** (`askif@0.1.0`, `@askif/jev@0.1.0`,
+   `@askif/openai@0.1.0`) — so this step, which trusted publishing normally requires before it can
+   be configured, is already done. A future new package needs the same one manual, OTP-gated
+   `npm publish` (use `npm`, not `pnpm publish`) before step 3 for it.
 
 3. **Configure a Trusted Publisher for each package**, on each package's npmjs.com settings page
    → "Publishing access" → "Trusted Publisher" → GitHub Actions:
@@ -37,7 +35,7 @@ I can't do any of this myself; it needs an interactive session on npmjs.com.
    - Workflow filename: `release.yml`
    - Environment: leave blank (this workflow doesn't use a GitHub Environment)
 
-   Repeat for `askif`, `@askif/jev`, and (once step 2's manual publish is done) `@askif/openai`.
+   Repeat for `askif`, `@askif/jev`, and `@askif/openai`.
 
 Once this is done, `release.yml` can publish every future version with no npm credentials in CI
 at all — just the `id-token: write` permission already in the workflow.
