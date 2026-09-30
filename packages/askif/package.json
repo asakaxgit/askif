@@ -1,6 +1,6 @@
 {
   "name": "askif",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Typed decisions for your code: ask.if, ask.switch, ask.score.",
   "keywords": [
     "decision",
