@@ -35,7 +35,7 @@ const backend = jev({
 
 - OpenJev uses its own model ids (`openjev-latest`, `openjev-0.1`); `jev-latest` and `jev-preview` are accepted as aliases, but a pinned Jev id like `jev-1.13.0` returns `400 Unknown model`.
 - Scales take 1–10 levels, matching this backend's limit. Some of OpenJev's other models allow fewer choices than this backend's 255 (Verdict: 24), which the server rejects with a 400.
-- Checked against OpenJev's real API layer with the model read stubbed (yes/no, choice and scale, the model-id and level-limit behavior above). Not yet run against a real model or the hosted Codiv API.
+- Checked live against the hosted Codiv API (2026-09-30): yes/no, choice and scale in one batch (about 0.5–0.7 s), `openjev-latest` and the `jev-latest` alias, scales of 2 and 10 levels, and the unknown-model error. Not tested: OpenJev's other models, or a self-hosted server with a real model.
 - OpenJev's image and `think`/`samples` extensions aren't exposed by askif.
 
 ## License
