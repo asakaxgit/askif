@@ -8,10 +8,10 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "pnpm --filter askif run build && pnpm --filter @askif/jev run build",
-    "typecheck": "pnpm --filter askif run typecheck && pnpm --filter askif run build && pnpm --filter @askif/jev run typecheck && tsc -p .github/scripts/tsconfig.json",
+    "build": "pnpm --filter askif run build && pnpm --filter @askif/jev run build && pnpm --filter @askif/openai run build",
+    "typecheck": "pnpm --filter askif run typecheck && pnpm --filter askif run build && pnpm --filter @askif/jev run typecheck && pnpm --filter @askif/openai run typecheck && tsc -p .github/scripts/tsconfig.json",
     "lint": "eslint .",
-    "test": "pnpm --filter askif run build && pnpm --filter askif run test && pnpm --filter @askif/jev run test",
+    "test": "pnpm --filter askif run build && pnpm --filter askif run test && pnpm --filter @askif/jev run test && pnpm --filter @askif/openai run test",
     "docs": "embedme README.md",
     "docs:check": "embedme --verify README.md",
     "check": "pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run docs:check",

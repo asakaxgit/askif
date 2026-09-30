@@ -10,7 +10,7 @@ const BUMPS = ["patch", "minor", "major"] as const;
 type Bump = (typeof BUMPS)[number];
 const isBump = (value: string): value is Bump => BUMPS.some((bump) => bump === value);
 
-const PACKAGES = ["askif", "@askif/jev"] as const;
+const PACKAGES = ["askif", "@askif/jev", "@askif/openai"] as const;
 type PackageName = (typeof PACKAGES)[number];
 
 const [packagesArg, bumpArg, ...summaryParts] = process.argv.slice(2);
@@ -26,9 +26,9 @@ if (!summary) {
 }
 
 const selected: readonly PackageName[] =
-  packagesArg === "both" ? PACKAGES : PACKAGES.filter((pkg) => pkg === packagesArg);
+  packagesArg === "all" ? PACKAGES : PACKAGES.filter((pkg) => pkg === packagesArg);
 if (selected.length === 0) {
-  console.error(`error: packages must be ${PACKAGES.join(", ")}, or "both", got ${JSON.stringify(packagesArg)}`);
+  console.error(`error: packages must be ${PACKAGES.join(", ")}, or "all", got ${JSON.stringify(packagesArg)}`);
   process.exit(1);
 }
 

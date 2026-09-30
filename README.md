@@ -152,7 +152,7 @@ A question is sent on the next microtask, once the chain is complete. Every `.ca
 
 ## Batching
 
-Calls about the **same state** made in the same tick go out as one request. Jev answers them in parallel, so extra questions barely add time:
+Calls about the **same state** made in the same tick go out as one request. Jev answers them in parallel, so extra questions barely add time. (`@askif/openai` has no native batching, so it sends one request per question instead — still in parallel, but not one HTTP call.)
 
 ```ts
 // packages/askif/examples/batching.ts#L24-L32
@@ -211,7 +211,9 @@ const viaOpenRouter = createAsk({
 });
 ```
 
-See the `Backend` type (from `askif`) to connect another model entirely — `@askif/jev` is just one implementation of it.
+`@askif/jev` also works with [OpenJev](https://github.com/razorback16/openjev), an open Jev-compatible server: set `baseURL` and `model` (details in [its README](./packages/jev#other-jev-compatible-servers)).
+
+See the `Backend` type (from `askif`) to connect another model entirely — `@askif/jev` is just one implementation of it. [`@askif/openai`](./packages/openai) is another, for OpenAI and OpenAI-compatible APIs.
 
 For tests, `mock` (from `askif`, no `@askif/jev` needed) answers questions locally and records every call:
 
@@ -266,7 +268,7 @@ try {
 | `INVALID_QUESTION`    | Too few or too many options or levels, or a duplicate key |
 | `CHAIN_STARTED`       | A chain method was called after the question was sent   |
 | `BACKEND_FAILED`      | The backend call failed. The original error is in `cause` |
-| `BACKEND_UNAVAILABLE` | A backend's own dependency is missing (e.g. `@typesafe-ai/sdk` for `@askif/jev`) |
+| `BACKEND_UNAVAILABLE` | A backend's own dependency is missing (e.g. `@typesafe-ai/sdk` for `@askif/jev`, `openai` for `@askif/openai`) |
 | `BAD_RESPONSE`        | The backend's answer did not match the question         |
 
 ## Writing good questions
@@ -288,7 +290,7 @@ import { ask as decide } from "@askif/jev";
 
 ## Contributing
 
-This is a [pnpm](https://pnpm.io) workspace with two packages: [`packages/askif`](./packages/askif) (the toolkit) and [`packages/jev`](./packages/jev) (the Jev bundle, depending on `askif`).
+This is a [pnpm](https://pnpm.io) workspace with three packages: [`packages/askif`](./packages/askif) (the toolkit), [`packages/jev`](./packages/jev) (the Jev bundle), and [`packages/openai`](./packages/openai) (the OpenAI bundle) — the last two each depend on `askif`.
 
 ```sh
 pnpm install

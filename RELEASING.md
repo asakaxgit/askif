@@ -8,23 +8,27 @@ day-to-day flow.
 
 **The actual `npm publish` call is a custom script** ([`.github/scripts/publish.ts`](.github/scripts/publish.ts)), not `changeset publish` directly. `changeset publish` auto-detects this as a pnpm workspace and shells out to `pnpm publish` — but pnpm's OIDC trusted-publishing support works by delegating to npm internally, and has a reported, unresolved bug ([pnpm/pnpm#9812](https://github.com/pnpm/pnpm/issues/9812)) where that delegation doesn't reliably reach npm's own OIDC path even with a new-enough npm present. Calling `npm publish` ourselves, directly, sidesteps it. The script still emits the same `git-tag` events `changesets/action` expects, so GitHub releases and git tags work exactly as they would with the default `changeset publish` path.
 
-`askif` and `@askif/jev` version **independently** (not lockstep) — a changeset can bump either
-one, or both, since `.changeset/config.json` has no `fixed`/`linked` group. This is a deliberate
-difference from this author's other pnpm-workspace projects: unlike a tightly-coupled package
-family, `@askif/jev` is the first of what the roadmap expects to be several independent backend
-adapters (`@askif/openai`, `@askif/anthropic`, ...), each with its own release cadence.
+`askif`, `@askif/jev`, and `@askif/openai` version **independently** (not lockstep) — a changeset
+can bump any subset of them, since `.changeset/config.json` has no `fixed`/`linked` group. This is
+a deliberate difference from this author's other pnpm-workspace projects: unlike a tightly-coupled
+package family, the backend adapters (`@askif/jev`, `@askif/openai`, and eventually
+`@askif/anthropic`) are each independent, with their own release cadence.
 
 ## One-time npm bootstrap (human only — needs an npmjs.com login)
 
 I can't do any of this myself; it needs an interactive session on npmjs.com.
 
-1. **The `@askif` organization** already exists (reserved before this package was split). Nothing
-   here needs a paid plan — both packages publish with `access: public` (see `publishConfig` in
-   `packages/jev/package.json`; `askif` itself is unscoped, which defaults to public).
+1. **The `@askif` organization** already exists (reserved before `@askif/jev` was split out).
+   Nothing here needs a paid plan — every scoped package publishes with `access: public` (see
+   `publishConfig` in `packages/jev/package.json` and `packages/openai/package.json`; `askif`
+   itself is unscoped, which defaults to public).
 
-2. **Both packages have already been published once, by hand** (`askif@0.1.0` and
+2. **`askif` and `@askif/jev` have already been published once, by hand** (`askif@0.1.0` and
    `@askif/jev@0.1.0`) — so this step, which trusted publishing normally requires before it can
-   be configured, is already done. Skip straight to step 3.
+   be configured, is already done for them. **`@askif/openai` has not been published yet** —
+   before its Trusted Publisher can be configured, someone needs to run `npm publish` from
+   `packages/openai` once by hand (interactive, OTP-gated — not something this session can do on
+   its own).
 
 3. **Configure a Trusted Publisher for each package**, on each package's npmjs.com settings page
    → "Publishing access" → "Trusted Publisher" → GitHub Actions:
@@ -33,7 +37,7 @@ I can't do any of this myself; it needs an interactive session on npmjs.com.
    - Workflow filename: `release.yml`
    - Environment: leave blank (this workflow doesn't use a GitHub Environment)
 
-   Repeat for both `askif` and `@askif/jev`.
+   Repeat for `askif`, `@askif/jev`, and (once step 2's manual publish is done) `@askif/openai`.
 
 Once this is done, `release.yml` can publish every future version with no npm credentials in CI
 at all — just the `id-token: write` permission already in the workflow.
@@ -66,7 +70,7 @@ convenient. Either way, what happens next is identical (step 3 onward).
 **Option B — the "Bump version" workflow, with no local checkout:**
 
 1. Go to Actions → **Bump version** → "Run workflow". Pick which package(s) (`askif`,
-   `@askif/jev`, or `both`), the bump type, and type a one-line summary.
+   `@askif/jev`, `@askif/openai`, or `all`), the bump type, and type a one-line summary.
 2. It opens a small PR containing just the generated changeset file (no code changes). Review
    and merge it.
 
@@ -78,11 +82,11 @@ itself — that's step 3 onward, below, and it's the same regardless of which op
 3. `release.yml` runs on the push to `main`, sees the pending changeset(s), and opens (or
    updates) a single **"Version Packages"** pull request — it bumps `package.json` for whichever
    package(s) have pending changesets, updates each one's `CHANGELOG.md`, and consumes the
-   changeset file(s). If `@askif/jev`'s `askif` dependency needs bumping too because `askif`
-   itself got a version bump, changesets does that automatically
-   (`updateInternalDependencies: "patch"` in the config). This PR accumulates every pending
-   changeset until it's merged, so multiple unrelated changes can ship together in one release,
-   or you can merge it right away for a fast release — your call.
+   changeset file(s). If an adapter's `askif` dependency needs bumping too because `askif` itself
+   got a version bump, changesets does that automatically for both `@askif/jev` and
+   `@askif/openai` (`updateInternalDependencies: "patch"` in the config). This PR accumulates
+   every pending changeset until it's merged, so multiple unrelated changes can ship together in
+   one release, or you can merge it right away for a fast release — your call.
 
 4. When you merge the **Version Packages** PR, `release.yml` runs again, finds no pending
    changesets, and runs `pnpm release` (build, then [`.github/scripts/publish.ts`](.github/scripts/publish.ts)) —
