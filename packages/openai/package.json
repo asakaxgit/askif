@@ -1,6 +1,6 @@
 {
   "name": "@askif/openai",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "The OpenAI backend for askif, with a ready-to-use `ask`. Works with any OpenAI-compatible API.",
   "keywords": [
     "askif",
@@ -44,7 +44,7 @@
     "example": "tsx examples/basic.ts"
   },
   "dependencies": {
-    "askif": "^0.1.0",
+    "askif": "^0.2.0",
     "openai": "^7.23.0"
   },
   "devDependencies": {
