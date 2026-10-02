@@ -10,7 +10,9 @@ test("ask.if runs the then handler", async () => {
   const log: string[] = [];
   const result = await ask.if("cat", "is animal", () => log.push("cat is animal"));
   assert.deepEqual(log, ["cat is animal"]);
-  assert.equal(result.branch, "then");
+  assert.ok(result.branch === "then");
+  assert.equal(result.index, 0);
+  assert.equal(result.condition, "is animal");
   assert.equal(result.probability, 0.97);
 });
 

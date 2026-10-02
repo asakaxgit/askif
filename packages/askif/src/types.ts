@@ -105,12 +105,15 @@ export type CallOptions = {
   readonly backend?: Backend;
 };
 
-export type IfOptions = CallOptions & {
+/** Options for one condition. `.elseif()` falls back to the `ask.if` options, then the config. */
+export type ConditionOptions = {
   readonly threshold?: number;
   readonly unsureBand?: readonly [number, number];
   /** What counts as a yes and a no, for conditions with a fuzzy boundary. */
   readonly criteria?: YesNoCriteria;
 };
+
+export type IfOptions = CallOptions & ConditionOptions;
 
 export type DecisionOptions = CallOptions & {
   readonly minConfidence?: number;
@@ -122,11 +125,46 @@ export type DecisionOptions = CallOptions & {
 
 export type Handler<R> = (result: R) => unknown;
 
-export type IfResult = {
-  readonly branch: "then" | "else" | "unsure";
-  /** Probability that the condition holds, from 0 to 1. */
+type IfResultBase = {
+  /** Probability of every condition, in order: the `if`, then each `.elseif()`. */
+  readonly probabilities: readonly number[];
+  /** Positions of every condition judged unsure, so a handler can see them even when a later branch won. */
+  readonly unsureIndexes: readonly number[];
+};
+
+/** The `if` condition held. */
+export type IfThenResult = IfResultBase & {
+  readonly branch: "then";
+  readonly index: 0;
+  readonly condition: string;
+  /** Probability that `condition` holds, from 0 to 1. */
   readonly probability: number;
 };
+
+/** An `.elseif()` condition held (and nothing before it did). */
+export type IfElseIfResult = IfResultBase & {
+  readonly branch: "elseif";
+  /** Position of the `.elseif()`, from 1. */
+  readonly index: number;
+  readonly condition: string;
+  readonly probability: number;
+};
+
+/** No condition held. See `probabilities` for how likely each one was. */
+export type IfElseResult = IfResultBase & {
+  readonly branch: "else";
+};
+
+/** A condition fell inside the unsure band. */
+export type IfUnsureResult = IfResultBase & {
+  readonly branch: "unsure";
+  /** Position of the unsure condition: 0 for the `if`, 1.. for each `.elseif()`. */
+  readonly index: number;
+  readonly condition: string;
+  readonly probability: number;
+};
+
+export type IfResult = IfThenResult | IfElseIfResult | IfElseResult | IfUnsureResult;
 
 export type Ranked<K extends string> = {
   readonly key: K;
@@ -157,11 +195,41 @@ export type ScoreResult<L extends string> = {
   readonly probabilities: readonly number[];
 };
 
+/** What an unsure condition does to the rest of an `.elseif()` chain. */
+export type UnsureOptions = {
+  /**
+   * `"stop"` (default): the first unsure condition runs the unsure handler and ends the chain,
+   * so a later branch never beats an earlier one that might be true.
+   * `"skip"`: an unsure condition counts as not matched and the chain moves on; a later clearly
+   * true branch wins. If nothing matches and some condition was unsure, the unsure handler runs
+   * instead of `else`.
+   */
+  readonly mode?: "stop" | "skip";
+};
+
 export type IfChain = {
-  /** Runs when the condition is judged false. */
-  readonly else: (handler: Handler<IfResult>) => IfChain;
+  /**
+   * Another condition. Every condition is sent in the same batch; the first one, in order,
+   * that holds wins and only its handler runs.
+   */
+  readonly elseif: (
+    condition: string,
+    handler?: Handler<IfElseIfResult>,
+    options?: ConditionOptions,
+  ) => ElseIfChain;
+  /** Runs when no condition holds. */
+  readonly else: (handler: Handler<IfElseResult>) => IfChain;
   /** Runs when the probability falls inside the unsure band. */
-  readonly unsure: (handler: Handler<IfResult>) => IfChain;
+  readonly unsure: (handler: Handler<IfUnsureResult>) => IfChain;
+  readonly then: PromiseLike<IfResult>["then"];
+};
+
+/** An `ask.if` chain with at least one `.elseif()`, where `.unsure()` takes a mode. */
+export type ElseIfChain = {
+  readonly elseif: IfChain["elseif"];
+  readonly else: (handler: Handler<IfElseResult>) => ElseIfChain;
+  /** Runs when a probability falls inside the unsure band. See {@link UnsureOptions}. */
+  readonly unsure: (handler: Handler<IfUnsureResult>, options?: UnsureOptions) => ElseIfChain;
   readonly then: PromiseLike<IfResult>["then"];
 };
 
@@ -196,7 +264,7 @@ export type Ask = {
   readonly if: (
     state: State,
     condition: string,
-    then?: Handler<IfResult>,
+    then?: Handler<IfThenResult>,
     options?: IfOptions,
   ) => IfChain;
   readonly switch: (
