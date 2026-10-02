@@ -37,7 +37,7 @@ const ask = createAsk({ backend });
 const animalResult = await ask
   .if("cat", "is animal", () => console.log("cat is animal"))
   .else(() => console.log("cat is not animal"));
-assert.equal(animalResult.branch, "then");
+assert.ok(animalResult.branch === "then");
 assert.equal(animalResult.probability, 0.97);
 
 // then / else / unsure, on a support ticket.
@@ -99,12 +99,12 @@ const routeResult = await ask
   .elseif("is a feature request", () => console.log("-> roadmap"))
   .elseif("is a question", () => console.log("-> support"))
   .else(() => console.log("-> inbox"));
-assert.equal(routeResult.branch, "then");
+assert.ok(routeResult.branch === "elseif");
 assert.equal(routeResult.index, 1);
 assert.equal(routeResult.condition, "is a feature request");
 
 // An unsure condition ends the chain by default, so a later branch can't beat one that might be true.
-// Pass { on: "skip" } when the branches are independent: unsure ones are skipped instead.
+// Pass { mode: "skip" } when the branches are independent: unsure ones are skipped instead.
 const unsureStopResult = await ask
   .if(message, "is a refund request", () => console.log("-> refunds"))
   .elseif("is a feature request", () => console.log("-> roadmap"))
@@ -114,8 +114,8 @@ assert.equal(unsureStopResult.branch, "unsure");
 const unsureSkipResult = await ask
   .if(message, "is a refund request", () => console.log("-> refunds"))
   .elseif("is a feature request", () => console.log("-> roadmap"))
-  .unsure(() => console.log("-> sent for review"), { on: "skip" });
-assert.equal(unsureSkipResult.branch, "then");
+  .unsure(() => console.log("-> sent for review"), { mode: "skip" });
+assert.ok(unsureSkipResult.branch === "elseif");
 assert.deepEqual(unsureSkipResult.unsureIndexes, [0]);
 
 // Every call above was answered locally — nothing left the process.

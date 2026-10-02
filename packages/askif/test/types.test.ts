@@ -28,15 +28,43 @@ test("result types are narrowed to the declared keys", () => {
 test("elseif chains stay typed", () => {
   const typeOnly = async () => {
     const result = await ask
-      .if("", "", (r) => r.index satisfies number)
-      .elseif("", (r) => r.condition satisfies string | undefined, { threshold: 0.7 })
-      .unsure(() => {}, { on: "skip" })
-      .else(() => {});
-    expectType<Equal<typeof result.index, number>>();
+      .if(
+        "",
+        "",
+        (r) => {
+          expectType<Equal<typeof r.branch, "then">>();
+          expectType<Equal<typeof r.index, 0>>();
+          expectType<Equal<typeof r.condition, string>>();
+          void r;
+        },
+      )
+      .elseif("", (r) => {
+        expectType<Equal<typeof r.branch, "elseif">>();
+        expectType<Equal<typeof r.condition, string>>();
+        void r;
+      })
+      .unsure(
+        (r) => {
+          expectType<Equal<typeof r.branch, "unsure">>();
+          void r;
+        },
+        { mode: "skip" },
+      )
+      .else((r) => {
+        expectType<Equal<typeof r.branch, "else">>();
+        // @ts-expect-error: else has no deciding condition
+        void r.condition;
+      });
+    expectType<Equal<typeof result.branch, "then" | "elseif" | "else" | "unsure">>();
     expectType<Equal<typeof result.unsureIndexes, readonly number[]>>();
-    void result;
-    // @ts-expect-error: "sometimes" is not a policy
-    void ask.if("", "").unsure(() => {}, { on: "sometimes" });
+    expectType<Equal<typeof result.probabilities, readonly number[]>>();
+
+    if (result.branch === "elseif") expectType<Equal<typeof result.condition, string>>();
+
+    // @ts-expect-error: "sometimes" is not a mode
+    void ask.if("", "").elseif("").unsure(() => {}, { mode: "sometimes" });
+    // @ts-expect-error: a mode only means something once there is an .elseif()
+    void ask.if("", "").unsure(() => {}, { mode: "skip" });
   };
   void typeOnly;
 });

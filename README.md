@@ -77,21 +77,22 @@ const routeResult = await ask
   .elseif("is a feature request", () => console.log("-> roadmap"))
   .elseif("is a question", () => console.log("-> support"))
   .else(() => console.log("-> inbox"));
-assert.equal(routeResult.branch, "then");
+assert.ok(routeResult.branch === "elseif");
 ```
 
 - Every condition is sent in the same batch, so a ladder costs about one round-trip, not one per branch. The answers for the branches after the winner are discarded.
 - Branches are checked in order, and only the first match runs.
 - The tokens for every condition are spent whether or not it matters, and `@askif/openai` sends one request per question. If the options are mutually exclusive categories, `ask.switch` is cheaper and lets the model compare them against each other.
 - `.elseif(condition, handler?, { threshold, unsureBand, criteria })` takes its own options. Anything omitted falls back to the `ask.if` options (`criteria` is never inherited).
+- A winning `.elseif()` reports `branch: "elseif"` (the `if` itself reports `"then"`), so a check like `result.branch === "then"` never mistakes one for the other.
 
-By default, an unsure condition **ends the chain**: a later branch never beats an earlier one that might be true. When the branches are independent, pass `{ on: "skip" }` to `.unsure()` instead. Unsure conditions are skipped, and `unsure` runs, instead of `else`, only if nothing matched.
+By default, an unsure condition **ends the chain**: a later branch never beats an earlier one that might be true. When the branches are independent, pass `{ mode: "skip" }` to `.unsure()` instead. Unsure conditions are skipped, and `unsure` runs, instead of `else`, only if nothing matched.
 
 ```ts
 // packages/askif/examples/if.ts#L106-L117
 
 // An unsure condition ends the chain by default, so a later branch can't beat one that might be true.
-// Pass { on: "skip" } when the branches are independent: unsure ones are skipped instead.
+// Pass { mode: "skip" } when the branches are independent: unsure ones are skipped instead.
 const unsureStopResult = await ask
   .if(message, "is a refund request", () => console.log("-> refunds"))
   .elseif("is a feature request", () => console.log("-> roadmap"))
@@ -101,7 +102,7 @@ assert.equal(unsureStopResult.branch, "unsure");
 const unsureSkipResult = await ask
   .if(message, "is a refund request", () => console.log("-> refunds"))
   .elseif("is a feature request", () => console.log("-> roadmap"))
-  .unsure(() => console.log("-> sent for review"), { on: "skip" });
+  .unsure(() => console.log("-> sent for review"), { mode: "skip" });
 ```
 
 ## `ask.switch`: one of several options
@@ -184,7 +185,7 @@ console.log(r.level, r.branch, r.confidence);
 
 Handlers receive the same result, so a handler can look at the runner-up or the probabilities.
 
-`ask.if` results also carry `index` (0 for the `if`, 1.. for each `.elseif()`, the number of conditions for `else`), `condition` (the deciding condition, absent on `else`), and `unsureIndexes` (every condition judged unsure).
+`ask.if` results are a union on `branch` (`"then"`, `"elseif"`, `"else"`, `"unsure"`), and each handler receives the result for its own branch. Every result carries `probabilities` (one per condition, in order) and `unsureIndexes` (every condition judged unsure). All but `else` also have `condition`, `probability`, and `index` (0 for the `if`, 1.. for each `.elseif()`).
 
 ## Chain in one expression
 

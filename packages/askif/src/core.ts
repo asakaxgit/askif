@@ -10,9 +10,14 @@ import type {
   DecisionOptions,
   Description,
   Handler,
+  ElseIfChain,
   IfChain,
+  IfElseIfResult,
+  IfElseResult,
   IfOptions,
   IfResult,
+  IfThenResult,
+  IfUnsureResult,
   Question,
   Ranked,
   ScaleAnswer,
@@ -249,26 +254,19 @@ export const createAsk = (
   const askIf = (
     state: State,
     condition: string,
-    thenHandler?: Handler<IfResult>,
+    thenHandler?: Handler<IfThenResult>,
     options: IfOptions = {},
   ): IfChain => {
-    type Branch = {
-      readonly condition: string;
-      readonly handler: Handler<IfResult> | undefined;
-      readonly options: IfOptions;
-    };
-    // Conditions are judged on their own terms; only what is shared across the chain carries over.
-    const shared: IfOptions = {
-      backend: options.backend,
-      threshold: options.threshold,
-      unsureBand: options.unsureBand,
-    };
-    const branches: Branch[] = [{ condition, handler: thenHandler, options }];
-    let elseHandler: Handler<IfResult> | undefined;
-    let unsureHandler: Handler<IfResult> | undefined;
-    let unsureOn: NonNullable<UnsureOptions["on"]> = "stop";
+    // Each condition is judged on its own terms; only what is shared across the chain carries over.
+    const { criteria, ...shared } = options;
+    void criteria;
+    const conditions: { readonly condition: string; readonly options: IfOptions }[] = [{ condition, options }];
+    const elseifHandlers: (Handler<IfElseIfResult> | undefined)[] = [];
+    let elseHandler: Handler<IfElseResult> | undefined;
+    let unsureHandler: Handler<IfUnsureResult> | undefined;
+    let unsureMode: NonNullable<UnsureOptions["mode"]> = "stop";
 
-    const judge = (p: number, o: IfOptions): IfResult["branch"] => {
+    const judge = (p: number, o: IfOptions): "then" | "else" | "unsure" => {
       if (unsureHandler !== undefined) {
         const [low, high] = o.unsureBand ?? config.unsureBand;
         if (p > high) return "then";
@@ -280,44 +278,54 @@ export const createAsk = (
 
     const runner = makeRunner(async (): Promise<IfResult> => {
       // Asked together, so they share one batch; later branches are discarded if an earlier one wins.
-      const probabilities = await Promise.all(branches.map((b) => probability(state, b.condition, b.options)));
+      const probabilities = await Promise.all(
+        conditions.map((c) => probability(state, c.condition, c.options)),
+      );
       const unsureIndexes: number[] = [];
+      const base = { probabilities, unsureIndexes };
 
-      const finish = async (
-        branch: IfResult["branch"],
-        index: number,
-        handler: Handler<IfResult> | undefined,
-      ): Promise<IfResult> => {
-        const decider = branches[index];
-        const result: IfResult = {
-          branch,
-          probability: probabilities[Math.min(index, branches.length - 1)] ?? 0,
+      const unsureAt = async (index: number): Promise<IfResult> => {
+        const result: IfUnsureResult = {
+          ...base,
+          branch: "unsure",
           index,
-          ...(decider === undefined ? {} : { condition: decider.condition }),
-          unsureIndexes,
+          condition: conditions[index]?.condition ?? "",
+          probability: probabilities[index] ?? 0,
         };
-        await handler?.(result);
+        await unsureHandler?.(result);
         return result;
       };
 
-      for (const [i, b] of branches.entries()) {
-        const verdict = judge(probabilities[i] ?? 0, b.options);
-        if (verdict === "then") return finish("then", i, b.handler);
+      for (const [i, c] of conditions.entries()) {
+        const verdict = judge(probabilities[i] ?? 0, c.options);
         if (verdict === "unsure") {
           unsureIndexes.push(i);
-          if (unsureOn === "stop") return finish("unsure", i, unsureHandler);
+          if (unsureMode === "stop") return unsureAt(i);
         }
+        if (verdict !== "then") continue;
+        const held = { ...base, condition: c.condition, probability: probabilities[i] ?? 0 };
+        if (i === 0) {
+          const result: IfThenResult = { ...held, branch: "then", index: 0 };
+          await thenHandler?.(result);
+          return result;
+        }
+        const result: IfElseIfResult = { ...held, branch: "elseif", index: i };
+        await elseifHandlers[i - 1]?.(result);
+        return result;
       }
+
       const firstUnsure = unsureIndexes[0];
-      return firstUnsure === undefined
-        ? finish("else", branches.length, elseHandler)
-        : finish("unsure", firstUnsure, unsureHandler);
+      if (firstUnsure !== undefined) return unsureAt(firstUnsure);
+      const result: IfElseResult = { ...base, branch: "else" };
+      await elseHandler?.(result);
+      return result;
     });
 
-    const chain: IfChain = {
+    const chain: ElseIfChain = {
       elseif: (elseifCondition, handler, elseifOptions = {}) => {
         runner.assertOpen("elseif");
-        branches.push({ condition: elseifCondition, handler, options: { ...shared, ...elseifOptions } });
+        conditions.push({ condition: elseifCondition, options: { ...shared, ...elseifOptions } });
+        elseifHandlers.push(handler);
         return chain;
       },
       else: (handler) => {
@@ -328,7 +336,7 @@ export const createAsk = (
       unsure: (handler, unsureOptions = {}) => {
         runner.assertOpen("unsure");
         unsureHandler = handler;
-        unsureOn = unsureOptions.on ?? "stop";
+        unsureMode = unsureOptions.mode ?? "stop";
         return chain;
       },
       then: (onFulfilled, onRejected) => runner.result().then(onFulfilled, onRejected),
