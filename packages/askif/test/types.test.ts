@@ -24,3 +24,19 @@ test("result types are narrowed to the declared keys", () => {
   };
   void typeOnly;
 });
+
+test("elseif chains stay typed", () => {
+  const typeOnly = async () => {
+    const result = await ask
+      .if("", "", (r) => r.index satisfies number)
+      .elseif("", (r) => r.condition satisfies string | undefined, { threshold: 0.7 })
+      .unsure(() => {}, { on: "skip" })
+      .else(() => {});
+    expectType<Equal<typeof result.index, number>>();
+    expectType<Equal<typeof result.unsureIndexes, readonly number[]>>();
+    void result;
+    // @ts-expect-error: "sometimes" is not a policy
+    void ask.if("", "").unsure(() => {}, { on: "sometimes" });
+  };
+  void typeOnly;
+});

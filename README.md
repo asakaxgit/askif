@@ -42,7 +42,7 @@ npx tsx packages/askif/examples/if.ts
 ## `ask.if`: yes or no
 
 ```ts
-// packages/askif/examples/if.ts#L40-L44
+// packages/askif/examples/if.ts#L44-L48
 
 const ticket = "I've asked three times and nobody has helped. Get me a real person.";
 const ticketResult = await ask
@@ -57,13 +57,51 @@ const ticketResult = await ask
 For a plain `if`, use `ask.is`. For the raw number, use `ask.probability`:
 
 ```ts
-// packages/askif/examples/if.ts#L83-L87
+// packages/askif/examples/if.ts#L87-L91
 
 if (await ask.is("penguin", "can fly")) console.log("penguin can fly");
 else console.log("penguin can't fly");
 
 // ask.probability: the raw number, when you want to do your own thing with it.
 const p = await ask.probability("penguin", "can fly"); // 0..1
+```
+
+### `.elseif()`: first match wins
+
+```ts
+// packages/askif/examples/if.ts#L96-L102
+
+const message = "It would be great if the export button supported CSV.";
+const routeResult = await ask
+  .if(message, "is a bug report", () => console.log("-> bug tracker"))
+  .elseif("is a feature request", () => console.log("-> roadmap"))
+  .elseif("is a question", () => console.log("-> support"))
+  .else(() => console.log("-> inbox"));
+assert.equal(routeResult.branch, "then");
+```
+
+- Every condition is sent in the same batch, so a ladder costs about one round-trip, not one per branch. The answers for the branches after the winner are discarded.
+- Branches are checked in order, and only the first match runs.
+- The tokens for every condition are spent whether or not it matters, and `@askif/openai` sends one request per question. If the options are mutually exclusive categories, `ask.switch` is cheaper and lets the model compare them against each other.
+- `.elseif(condition, handler?, { threshold, unsureBand, criteria })` takes its own options. Anything omitted falls back to the `ask.if` options (`criteria` is never inherited).
+
+By default, an unsure condition **ends the chain**: a later branch never beats an earlier one that might be true. When the branches are independent, pass `{ on: "skip" }` to `.unsure()` instead. Unsure conditions are skipped, and `unsure` runs, instead of `else`, only if nothing matched.
+
+```ts
+// packages/askif/examples/if.ts#L106-L117
+
+// An unsure condition ends the chain by default, so a later branch can't beat one that might be true.
+// Pass { on: "skip" } when the branches are independent: unsure ones are skipped instead.
+const unsureStopResult = await ask
+  .if(message, "is a refund request", () => console.log("-> refunds"))
+  .elseif("is a feature request", () => console.log("-> roadmap"))
+  .unsure(() => console.log("-> sent for review"));
+assert.equal(unsureStopResult.branch, "unsure");
+
+const unsureSkipResult = await ask
+  .if(message, "is a refund request", () => console.log("-> refunds"))
+  .elseif("is a feature request", () => console.log("-> roadmap"))
+  .unsure(() => console.log("-> sent for review"), { on: "skip" });
 ```
 
 ## `ask.switch`: one of several options
@@ -146,13 +184,15 @@ console.log(r.level, r.branch, r.confidence);
 
 Handlers receive the same result, so a handler can look at the runner-up or the probabilities.
 
+`ask.if` results also carry `index` (0 for the `if`, 1.. for each `.elseif()`, the number of conditions for `else`), `condition` (the deciding condition, absent on `else`), and `unsureIndexes` (every condition judged unsure).
+
 ## Chain in one expression
 
-A question is sent on the next microtask, once the chain is complete. Every `.case()`, `.level()`, `.else()`, and `.unsure()` must be part of the same expression. Adding one later throws a `CHAIN_STARTED` error.
+A question is sent on the next microtask, once the chain is complete. Every `.case()`, `.level()`, `.elseif()`, `.else()`, and `.unsure()` must be part of the same expression. Adding one later throws a `CHAIN_STARTED` error.
 
 ## Batching
 
-Calls about the **same state** made in the same tick go out as one request. Jev answers them in parallel, so extra questions barely add time. (`@askif/openai` has no native batching, so it sends one request per question instead — still in parallel, but not one HTTP call.)
+Calls about the **same state** made in the same tick go out as one request. Jev answers them in parallel, so extra questions barely add time. The conditions of an `.elseif()` chain are batched too. (`@askif/openai` has no native batching, so it sends one request per question instead — still in parallel, but not one HTTP call.)
 
 ```ts
 // packages/askif/examples/batching.ts#L24-L32
