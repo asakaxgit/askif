@@ -254,6 +254,8 @@ const viaOpenRouter = createAsk({
 
 `@askif/jev` also works with [OpenJev](https://github.com/razorback16/openjev), an open Jev-compatible server: set `baseURL` and `model` (details in [its README](./packages/jev#other-jev-compatible-servers)).
 
+For measured tokens and latency across the backends, see [`bench/`](./bench).
+
 See the `Backend` type (from `askif`) to connect another model entirely — `@askif/jev` is just one implementation of it. [`@askif/openai`](./packages/openai) is another, for OpenAI and OpenAI-compatible APIs, and [`@askif/clef`](./packages/clef) is a third, for Cloudflare Workers AI's Clef (same System One format as Jev, so questions are batched into one request).
 
 For tests, `mock` (from `askif`, no `@askif/jev` needed) answers questions locally and records every call:
