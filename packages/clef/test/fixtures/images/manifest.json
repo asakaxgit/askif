@@ -1,0 +1,56 @@
+[
+  {
+    "file": "red-circle.png",
+    "contentType": "image/png",
+    "description": "A solid red circle on a white background.",
+    "questions": [
+      { "kind": "yesno", "question": "Is there a red shape in the image?", "expected": true },
+      { "kind": "choice", "question": "What shape is it? Options: circle, square, triangle", "options": ["circle", "square", "triangle"], "expected": "circle" }
+    ]
+  },
+  {
+    "file": "blue-square.jpg",
+    "contentType": "image/jpeg",
+    "description": "A solid blue square on a white background.",
+    "questions": [
+      { "kind": "yesno", "question": "Is there a blue shape in the image?", "expected": true },
+      { "kind": "choice", "question": "What shape is it? Options: circle, square, triangle", "options": ["circle", "square", "triangle"], "expected": "square" }
+    ]
+  },
+  {
+    "file": "green-triangle.webp",
+    "contentType": "image/webp",
+    "description": "A solid green triangle on a white background.",
+    "questions": [
+      { "kind": "yesno", "question": "Is there a green shape in the image?", "expected": true },
+      { "kind": "choice", "question": "What shape is it? Options: circle, square, triangle", "options": ["circle", "square", "triangle"], "expected": "triangle" }
+    ]
+  },
+  {
+    "file": "stop-sign.png",
+    "contentType": "image/png",
+    "description": "A red octagon with the white word STOP, like a stop sign.",
+    "questions": [
+      { "kind": "yesno", "question": "Does the image contain the word STOP?", "expected": true },
+      { "kind": "choice", "question": "What color is the sign? Options: red, blue, green", "options": ["red", "blue", "green"], "expected": "red" }
+    ]
+  },
+  {
+    "file": "checkerboard.png",
+    "contentType": "image/png",
+    "description": "A black and white 8x8 checkerboard.",
+    "questions": [
+      { "kind": "yesno", "question": "Is the image a checkerboard pattern?", "expected": true },
+      { "kind": "choice", "question": "Which colors does it use? Options: black and white, red and blue, green and yellow", "options": ["black and white", "red and blue", "green and yellow"], "expected": "black and white" }
+    ]
+  },
+  {
+    "file": "blank-white.jpg",
+    "contentType": "image/jpeg",
+    "description": "An entirely white image with no content.",
+    "questions": [
+      { "kind": "yesno", "question": "Is the image entirely white?", "expected": true },
+      { "kind": "yesno", "question": "Is there any shape or text in the image?", "expected": false }
+    ]
+  }
+]

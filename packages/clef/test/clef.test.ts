@@ -1,3 +1,4 @@
+import { readdirSync, readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createAsk, isAskError } from "askif";
@@ -248,4 +249,35 @@ test("more than 4 images are rejected before any request", async () => {
     (error) => isAskError(error) && error.code === "BACKEND_FAILED" && /at most 4/.test(error.message),
   );
   assert.equal(requests, 0);
+});
+
+test("the generated fixture images are real PNG/JPEG/WebP files and go out intact", async () => {
+  const dir = new URL("./fixtures/images/", import.meta.url);
+  const sent: unknown[] = [];
+  const backend = clef({
+    binding: {
+      run: async (_model, input) => {
+        sent.push(input);
+        return { model: "clef", answers: { q: { type: "noul", noul: 0.5 } } };
+      },
+    },
+  });
+  const magic = { "image/png": "89504e47", "image/jpeg": "ffd8ff", "image/webp": "52494646" } as const;
+
+  const files = readdirSync(dir).filter((name) => /\.(png|jpg|webp)$/.test(name));
+  assert.equal(files.length, 6);
+  for (const name of files) {
+    const bytes = readFileSync(new URL(name, dir));
+    const type = name.endsWith(".png") ? "image/png" : name.endsWith(".webp") ? "image/webp" : "image/jpeg";
+    assert.ok(bytes.toString("hex").startsWith(magic[type]), `${name} has the ${type} signature`);
+    assert.ok(bytes.length < 20_000, `${name} is small`);
+
+    sent.length = 0;
+    await backend.decide({ photo: `data:${type};base64,${bytes.toString("base64")}` }, { q: { kind: "yesno", instructions: "ok?" } });
+    const [input] = sent;
+    assert.ok(isRecord(input));
+    const [image] = Array.isArray(input["images"]) ? input["images"] : [];
+    assert.equal(typeof image, "string");
+    assert.equal(Buffer.from(String(image).split(",")[1] ?? "", "base64").equals(bytes), true);
+  }
 });
