@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { createAsk, isAskError } from "askif";
+import { createAsk, image, isAskError } from "askif";
 import type { Json } from "askif";
 import { clef } from "../src/index.js";
 import * as fixture from "../../askif/test/fixtures/system-one.js";
@@ -216,9 +216,10 @@ test("images in the state are sent in Clef's images field", async () => {
 
   const [mixed, bare, none] = bodies;
   assert.ok(isRecord(mixed) && isRecord(bare) && isRecord(none));
-  assert.deepEqual(mixed["images"], [dataUrl, object]); // in order of appearance
+  // Both input forms arrive as { content_type, base64 }, in order of appearance.
+  assert.deepEqual(mixed["images"], [{ content_type: "image/png", base64: "AAAA" }, object]);
   assert.deepEqual(mixed["state"], { note: "look", photos: ["[image 1]", "[image 2]"], count: 2 });
-  assert.deepEqual(bare["images"], [dataUrl]);
+  assert.deepEqual(bare["images"], [{ content_type: "image/png", base64: "AAAA" }]);
   assert.equal(bare["state"], "[image 1]");
   assert.equal("images" in none, false);
 });
@@ -246,7 +247,7 @@ test("more than 4 images are rejected before any request", async () => {
   const five = Array.from({ length: 5 }, () => "data:image/jpeg;base64,AAAA");
   await assert.rejects(
     () => backend.decide(five, { q: { kind: "yesno", instructions: "ok?" } }),
-    (error) => isAskError(error) && error.code === "BACKEND_FAILED" && /at most 4/.test(error.message),
+    (error) => isAskError(error) && error.code === "UNSUPPORTED_INPUT" && /at most 4/.test(error.message),
   );
   assert.equal(requests, 0);
 });
@@ -276,8 +277,33 @@ test("the generated fixture images are real PNG/JPEG/WebP files and go out intac
     await backend.decide({ photo: `data:${type};base64,${bytes.toString("base64")}` }, { q: { kind: "yesno", instructions: "ok?" } });
     const [input] = sent;
     assert.ok(isRecord(input));
-    const [image] = Array.isArray(input["images"]) ? input["images"] : [];
-    assert.equal(typeof image, "string");
-    assert.equal(Buffer.from(String(image).split(",")[1] ?? "", "base64").equals(bytes), true);
+    const [sentImage] = Array.isArray(input["images"]) ? input["images"] : [];
+    assert.ok(isRecord(sentImage));
+    assert.equal(sentImage["content_type"], type);
+    assert.equal(Buffer.from(String(sentImage["base64"]), "base64").equals(bytes), true);
   }
+});
+
+test("images built with image() are sent, and formats Clef can't read are refused", async () => {
+  const sent: unknown[] = [];
+  const backend = clef({
+    binding: {
+      run: async (_model, input) => {
+        sent.push(input);
+        return { model: "clef", answers: { q: { type: "noul", noul: 0.5 } } };
+      },
+    },
+  });
+  const question = { q: { kind: "yesno", instructions: "ok?" } } as const;
+  const png = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  await backend.decide({ photo: image(png) }, question);
+  const [input] = sent;
+  assert.ok(isRecord(input));
+  assert.deepEqual(input["images"], [{ content_type: "image/png", base64: image(png).source.data }]);
+  assert.deepEqual(input["state"], { photo: "[image 1]" });
+
+  await assert.rejects(
+    () => backend.decide({ photo: image(Uint8Array.from([0x47, 0x49, 0x46, 0x38, 0x39, 0x61])) }, question),
+    (error) => isAskError(error) && error.code === "UNSUPPORTED_INPUT" && /image\/gif/.test(error.message),
+  );
 });
