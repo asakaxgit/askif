@@ -200,6 +200,22 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
+  packages/clef:
+    dependencies:
+      askif:
+        specifier: ^0.1.1
+        version: link:../askif
+    devDependencies:
+      '@types/node':
+        specifier: ^26.6.3
+        version: 26.6.3
+      tsx:
+        specifier: ^4.23.15
+        version: 4.23.15
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
   packages/jev:
     dependencies:
       '@typesafe-ai/sdk':

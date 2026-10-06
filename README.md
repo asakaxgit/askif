@@ -254,7 +254,7 @@ const viaOpenRouter = createAsk({
 
 `@askif/jev` also works with [OpenJev](https://github.com/razorback16/openjev), an open Jev-compatible server: set `baseURL` and `model` (details in [its README](./packages/jev#other-jev-compatible-servers)).
 
-See the `Backend` type (from `askif`) to connect another model entirely — `@askif/jev` is just one implementation of it. [`@askif/openai`](./packages/openai) is another, for OpenAI and OpenAI-compatible APIs.
+See the `Backend` type (from `askif`) to connect another model entirely — `@askif/jev` is just one implementation of it. [`@askif/openai`](./packages/openai) is another, for OpenAI and OpenAI-compatible APIs, and [`@askif/clef`](./packages/clef) is a third, for Cloudflare Workers AI's Clef (same System One format as Jev, so questions are batched into one request).
 
 For tests, `mock` (from `askif`, no `@askif/jev` needed) answers questions locally and records every call:
 
@@ -331,7 +331,7 @@ import { ask as decide } from "@askif/jev";
 
 ## Contributing
 
-This is a [pnpm](https://pnpm.io) workspace with three packages: [`packages/askif`](./packages/askif) (the toolkit), [`packages/jev`](./packages/jev) (the Jev bundle), and [`packages/openai`](./packages/openai) (the OpenAI bundle) — the last two each depend on `askif`.
+This is a [pnpm](https://pnpm.io) workspace with four packages: [`packages/askif`](./packages/askif) (the toolkit), [`packages/jev`](./packages/jev) (the Jev bundle), [`packages/openai`](./packages/openai) (the OpenAI bundle), and [`packages/clef`](./packages/clef) (the Cloudflare Clef bundle) — the last three each depend on `askif`.
 
 ```sh
 pnpm install
