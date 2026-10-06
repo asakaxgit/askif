@@ -7,6 +7,8 @@ export const ASK_ERROR_CODES = [
   "BACKEND_FAILED",
   /** The backend could not be loaded, e.g. an optional SDK is not installed. */
   "BACKEND_UNAVAILABLE",
+  /** The state has something this backend can't take, e.g. images for a text-only backend, or too many. */
+  "UNSUPPORTED_INPUT",
   /** The backend returned an answer that does not match the question. */
   "BAD_RESPONSE",
 ] as const;

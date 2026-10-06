@@ -4,6 +4,24 @@ export type Json = string | number | boolean | null | Json[] | { [key: string]: 
 /** What a question is asked about: text, a JSON object, or an array. */
 export type State = Json;
 
+/**
+ * Where an image's bytes come from. Only base64 for now; a URL or a bucket object (R2, S3, GCS)
+ * would be further kinds, resolved to base64 before a backend that can't fetch them sees them.
+ */
+export type ImageSource = {
+  readonly kind: "base64";
+  /** e.g. "image/png". */
+  readonly mediaType: string;
+  /** The image bytes, base64-encoded (no `data:` prefix). */
+  readonly data: string;
+};
+
+/** An image inside a state. Build one with `image()`. It is plain JSON, so it works anywhere a state does. */
+export type Image = {
+  readonly type: "image";
+  readonly source: ImageSource;
+};
+
 /** Text the model reads: a plain string, or structured JSON such as `{ what, examples }`. */
 export type Description = Json;
 
@@ -68,6 +86,8 @@ export type ScaleAnswer = {
 export type Answer = YesNoAnswer | ChoiceAnswer | ScaleAnswer;
 
 export type BackendLimits = {
+  /** How many images a state may contain. Absent means the backend takes no images. */
+  readonly maxImages?: number;
   readonly maxOptions?: number;
   readonly maxLevels?: number;
   readonly maxQuestionsPerCall?: number;

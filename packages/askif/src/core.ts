@@ -1,4 +1,5 @@
 import { isAskError, makeAskError } from "./errors.js";
+import { extractImages } from "./image.js";
 import type {
   Answer,
   Ask,
@@ -194,8 +195,23 @@ export const createAsk = (
     });
   };
 
+  /** A state with images only goes to a backend that takes that many; otherwise base64 would be sent as text. */
+  const imageProblem = (backend: Backend, state: State): string | undefined => {
+    const found = extractImages(state).images.length;
+    const max = backend.limits?.maxImages ?? 0;
+    if (found === 0 || found <= max) return undefined;
+    return max === 0
+      ? `The ${backend.name} backend does not accept images.`
+      : `The ${backend.name} backend accepts at most ${max} images per state, got ${found}.`;
+  };
+
   const enqueue = (backend: Backend, state: State, question: Question): Promise<Answer> =>
     new Promise((resolve, reject) => {
+      const problem = imageProblem(backend, state);
+      if (problem !== undefined) {
+        reject(makeAskError("UNSUPPORTED_INPUT", problem));
+        return;
+      }
       const byState = queues.get(backend) ?? new Map<string, Batch>();
       queues.set(backend, byState);
       const key = JSON.stringify(state);

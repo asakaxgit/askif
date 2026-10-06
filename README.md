@@ -209,6 +209,31 @@ await Promise.all([
 ]); // one request
 ```
 
+## Images
+
+Put an image in the state with `image()`: from bytes, from base64, or from a `data:` URL. The format (PNG, JPEG, WebP, GIF) is detected, or pass it as the second argument.
+
+```ts
+import { readFile } from "node:fs/promises";
+import { image } from "askif";
+
+await ask.if(
+  { photo: image(await readFile("parcel.jpg")), note: "customer upload" },
+  "shows a damaged parcel",
+  () => openClaim(),
+);
+```
+
+The model sees each image where you put it, and your question can refer to it as "image 1", "image 2" (in the order they appear in the state). Same-state batching works as usual.
+
+| Backend | Images |
+| --- | --- |
+| `@askif/clef` | up to 4: PNG, JPEG, WebP |
+| `@askif/openai` | PNG, JPEG, WebP, GIF (non-animated) |
+| `@askif/jev` | not supported |
+
+A state with images sent to a backend that doesn't take them (or too many) fails with `UNSUPPORTED_INPUT` before any request, instead of sending base64 as text. Images are base64 only for now. Images that live in a bucket (R2, S3, GCS) or at a URL are planned: an image's `source` has a `kind` field so those can be added, and until then you download the bytes and pass them to `image()`. Backend authors: declare `limits.maxImages` and call `extractImages(state)` to get the images out of the state.
+
 ## Configuration
 
 ```ts
@@ -312,6 +337,7 @@ try {
 | `CHAIN_STARTED`       | A chain method was called after the question was sent   |
 | `BACKEND_FAILED`      | The backend call failed. The original error is in `cause` |
 | `BACKEND_UNAVAILABLE` | A backend's own dependency is missing (e.g. `@typesafe-ai/sdk` for `@askif/jev`, `openai` for `@askif/openai`) |
+| `UNSUPPORTED_INPUT`   | The state has something the backend can't take: images for a text-only backend, too many images, an unsupported image format, or unreadable image data |
 | `BAD_RESPONSE`        | The backend's answer did not match the question         |
 
 ## Writing good questions

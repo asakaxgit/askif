@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { APIError, BedrockOpenAI, OpenAI } from "openai";
-import { confidenceOf, createAsk, isAskError } from "askif";
+import { confidenceOf, createAsk, image, isAskError } from "askif";
 import type { Json } from "askif";
 import { openai } from "../src/index.js";
 
@@ -318,4 +318,40 @@ test("a BedrockOpenAI client keeps its endpoint and bearer auth, and the given m
   assert.equal(request.body["model"], "openai.gpt-oss-120b-1:0");
   assert.equal(request.body["reasoning_effort"], "low");
   assert.equal(schemaNameOf(request.body), "yesno_answer"); // still asks for a json_schema response
+});
+
+test("images in the state go out as image_url parts after the text", async () => {
+  const bodies: Json[] = [];
+  const client = routedClient({ yesno_answer: JSON.stringify({ probability: 0.9 }) }, bodies);
+  const png = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  const photo = image(png);
+
+  assert.equal(await createAsk({ backend: openai({ client }) }).is({ note: "hi", photo }, "shows a cat"), true);
+
+  const [body] = bodies;
+  assert.ok(isRecord(body) && Array.isArray(body["messages"]));
+  const user = body["messages"][1];
+  assert.ok(isRecord(user) && Array.isArray(user["content"]));
+  const [text, part] = user["content"];
+  assert.ok(isRecord(text) && typeof text["text"] === "string");
+  assert.match(text["text"], /"photo": ?"\[image 1\]"/);
+  assert.match(text["text"], /Attached images, in order: \[image 1\]\./);
+  assert.ok(!text["text"].includes(photo.source.data), "base64 is not repeated in the text");
+  assert.deepEqual(part, { type: "image_url", image_url: { url: `data:image/png;base64,${photo.source.data}` } });
+});
+
+test("a state without images still sends a plain string, and an unsupported format is refused", async () => {
+  const bodies: Json[] = [];
+  const client = routedClient({ yesno_answer: JSON.stringify({ probability: 0.9 }) }, bodies);
+  const backend = openai({ client });
+  await backend.decide("plain", { q: { kind: "yesno", instructions: "ok?" } });
+  const [body] = bodies;
+  assert.ok(isRecord(body) && Array.isArray(body["messages"]));
+  const user = body["messages"][1];
+  assert.ok(isRecord(user) && typeof user["content"] === "string");
+
+  await assert.rejects(
+    () => backend.decide(image("AAAA", "image/tiff"), { q: { kind: "yesno", instructions: "ok?" } }),
+    (error) => isAskError(error) && error.code === "UNSUPPORTED_INPUT" && /image\/tiff/.test(error.message),
+  );
 });
