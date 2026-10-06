@@ -194,3 +194,58 @@ test("batches are capped at 64 questions per request", async () => {
   await Promise.all(Array.from({ length: 65 }, (_, i) => ask.is("s", `q${i}`)));
   assert.equal(requests, 2);
 });
+
+test("images in the state are sent in Clef's images field", async () => {
+  const bodies: unknown[] = [];
+  const backend = clef({
+    binding: {
+      run: async (_model, input) => {
+        bodies.push(input);
+        return { model: "clef", answers: { q: { type: "noul", noul: 0.5 } } };
+      },
+    },
+  });
+  const question = { q: { kind: "yesno", instructions: "Is it a cat?" } } as const;
+  const dataUrl = "data:image/png;base64,AAAA";
+  const object = { content_type: "image/webp", base64: "BBBB" };
+
+  await backend.decide({ note: "look", photos: [dataUrl, object], count: 2 }, question);
+  await backend.decide(dataUrl, question);
+  await backend.decide("no image here", question);
+
+  const [mixed, bare, none] = bodies;
+  assert.ok(isRecord(mixed) && isRecord(bare) && isRecord(none));
+  assert.deepEqual(mixed["images"], [dataUrl, object]); // in order of appearance
+  assert.deepEqual(mixed["state"], { note: "look", photos: ["[image 1]", "[image 2]"], count: 2 });
+  assert.deepEqual(bare["images"], [dataUrl]);
+  assert.equal(bare["state"], "[image 1]");
+  assert.equal("images" in none, false);
+});
+
+test("an ordinary object that merely has a base64 field is not an image", async () => {
+  let sent: unknown;
+  const backend = clef({
+    binding: {
+      run: async (_model, input) => {
+        sent = input;
+        return { model: "clef", answers: { q: { type: "noul", noul: 0.5 } } };
+      },
+    },
+  });
+  const state = { content_type: "text/plain", base64: "aGk=" };
+  await backend.decide(state, { q: { kind: "yesno", instructions: "ok?" } });
+  assert.ok(isRecord(sent));
+  assert.deepEqual(sent["state"], state);
+  assert.equal("images" in sent, false);
+});
+
+test("more than 4 images are rejected before any request", async () => {
+  let requests = 0;
+  const backend = clef({ binding: { run: async () => (requests += 1) } });
+  const five = Array.from({ length: 5 }, () => "data:image/jpeg;base64,AAAA");
+  await assert.rejects(
+    () => backend.decide(five, { q: { kind: "yesno", instructions: "ok?" } }),
+    (error) => isAskError(error) && error.code === "BACKEND_FAILED" && /at most 4/.test(error.message),
+  );
+  assert.equal(requests, 0);
+});
