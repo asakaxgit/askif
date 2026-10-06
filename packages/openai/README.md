@@ -17,6 +17,18 @@ await ask.if("cat", "is animal", () => {
 
 Full documentation, the `ask.if`/`ask.switch`/`ask.score` guide, and runnable examples live in the [main repo README](https://github.com/asakaxgit/askif#readme).
 
+## Images
+
+Put images in the state with `image()` from `askif` (PNG, JPEG, WebP, or non-animated GIF). They are sent as `image_url` data URLs after the question text, and each one is an `[image N]` placeholder in the state, so a question can refer to "image 1".
+
+```ts
+import { image } from "askif";
+
+await ask.if({ photo: image(bytes) }, "shows a cat");
+```
+
+Every question carries its images, so N questions about an image send it N times. Not yet verified against the live API (the account used for testing was rate-limited); the request shape follows the SDK's types and is covered by offline tests.
+
 ## How it works
 
 - Every question is sent as its own request, in parallel — this backend has no native

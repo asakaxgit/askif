@@ -1,5 +1,5 @@
-import { createAsk, makeAskError } from "askif";
-import type { Answer, Backend, Json, Question } from "askif";
+import { createAsk, extractImages, makeAskError } from "askif";
+import type { Answer, Backend, Image, Json, Question } from "askif";
 
 export type ClefModel = "clef" | "clef-flash";
 
@@ -23,8 +23,8 @@ export type ClefOptions = {
   readonly fetch?: typeof fetch;
 };
 
-/** Limits documented for Clef: 1-64 questions, 2-255 options, 2-10 levels. */
-const LIMITS = { maxQuestionsPerCall: 64, maxOptions: 255, maxLevels: 10 } as const;
+/** Limits documented for Clef: 1-64 questions, 2-255 options, 2-10 levels, up to 4 images. */
+const LIMITS = { maxQuestionsPerCall: 64, maxOptions: 255, maxLevels: 10, maxImages: 4 } as const;
 
 const DEFAULT_BASE_URL = "https://api.cloudflare.com/client/v4";
 
@@ -80,45 +80,20 @@ const toClef = (question: Question): ClefQuestion => {
   }
 };
 
-/** An image as Clef takes it: a base64 data URL, or its content type and bytes. */
-type ClefImage = string | { content_type: string; base64: string };
+/** An image as Clef takes it. */
+type ClefImage = { content_type: string; base64: string };
 
 const MAX_IMAGES = 4;
-const IMAGE_DATA_URL = /^data:image\/(?:png|jpeg|webp);base64,/i;
+const MEDIA_TYPES: readonly string[] = ["image/png", "image/jpeg", "image/webp"];
 
-const isImageObject = (value: { [key: string]: Json }): value is { content_type: string; base64: string } => {
-  const { content_type: contentType, base64 } = value;
-  return (
-    Object.keys(value).length === 2 &&
-    typeof contentType === "string" &&
-    /^image\/(?:png|jpeg|webp)$/i.test(contentType) &&
-    typeof base64 === "string"
-  );
-};
-
-/**
- * Moves images out of the state, since askif's state is plain JSON. Any base64 image data
- * URL, or `{ content_type, base64 }` object, anywhere in the state becomes an entry in
- * `images` and leaves "[image N]" behind (N counts from 1, in the order Clef gets them).
- */
-const extractImages = (state: Json): { readonly state: Json; readonly images: readonly ClefImage[] } => {
-  const images: ClefImage[] = [];
-  const placeholder = (image: ClefImage): string => {
-    images.push(image);
-    return `[image ${images.length}]`;
-  };
-  const walk = (value: Json): Json => {
-    if (typeof value === "string") return IMAGE_DATA_URL.test(value) ? placeholder(value) : value;
-    if (Array.isArray(value)) return value.map(walk);
-    if (value !== null && typeof value === "object") {
-      if (isImageObject(value)) return placeholder({ content_type: value.content_type, base64: value.base64 });
-      return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, walk(entry)]));
+/** Moves the state's images into Clef's `images` field (see `extractImages` in askif for how they are found). */
+const toClefImages = (images: readonly Image[]): ClefImage[] =>
+  images.map(({ source }) => {
+    if (!MEDIA_TYPES.includes(source.mediaType)) {
+      throw makeAskError("UNSUPPORTED_INPUT", `Clef takes PNG, JPEG and WebP images, not ${source.mediaType}.`);
     }
-    return value;
-  };
-  const stripped = walk(state);
-  return { state: stripped, images };
-};
+    return { content_type: source.mediaType, base64: source.data };
+  });
 
 const readProbability = (value: unknown): number | undefined =>
   typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1 ? value : undefined;
@@ -235,10 +210,11 @@ export const clef = (options: ClefOptions = {}): Backend => {
     name: "clef",
     limits: LIMITS,
     decide: async (state, questions) => {
-      const { state: text, images } = extractImages(state);
-      if (images.length > MAX_IMAGES) {
-        throw makeAskError("BACKEND_FAILED", `Clef takes at most ${MAX_IMAGES} images per state, got ${images.length}.`);
+      const { state: text, images: found } = extractImages(state);
+      if (found.length > MAX_IMAGES) {
+        throw makeAskError("UNSUPPORTED_INPUT", `Clef takes at most ${MAX_IMAGES} images per state, got ${found.length}.`);
       }
+      const images = toClefImages(found);
       const result = await call({
         model,
         state: toEntry(text),

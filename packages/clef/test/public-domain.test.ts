@@ -54,6 +54,12 @@ test("the public-domain images go out in Clef's images field", async () => {
   await backend.decide({ photos }, { q: { kind: "yesno", instructions: "Is there a cat?" } });
   const [input] = sent;
   assert.ok(isRecord(input));
-  assert.deepEqual(input["images"], photos);
+  assert.deepEqual(
+    input["images"],
+    photos.map((url) => {
+      const [, contentType = "", base64 = ""] = /^data:([^;]+);base64,(.*)$/.exec(url) ?? [];
+      return { content_type: contentType, base64 };
+    }),
+  );
   assert.deepEqual(input["state"], { photos: ["[image 1]", "[image 2]", "[image 3]", "[image 4]"] });
 });

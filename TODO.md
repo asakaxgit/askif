@@ -37,6 +37,8 @@ Ideas not yet done, roughly in priority order.
 
 - [ ] `@askif/clef`: first manual publish. (Live smoke test done 2026-10-06: 22/22 image answers correct; tokens and latency measured, see the package README. The bench also ran scale and up to 64 mixed questions per request live, via `decide`. Not yet live-tested: askif-level batching through `ask`, the Workers binding, `clef-flash` image answers, error paths.) Image input is supported by pulling data URLs / `{ content_type, base64 }` out of the state; a first-class image type in askif's `State` would be cleaner but touches core.
 - [ ] If a third System One backend appears, move the shared question/answer mapping from `@askif/jev` and `@askif/clef` into `askif` (until then, `packages/askif/test/fixtures/system-one.ts` keeps them in step).
+- [ ] Image sources beyond base64: `{ kind: "url" }` and `{ kind: "bucket", provider, bucket, key }` (R2/S3/GCS) in `askif`'s `ImageSource`, plus a resolver (e.g. a `resolveImage` hook on `createAsk`) that downloads to base64 for backends that can't fetch themselves; backends that can (OpenAI takes URLs) would advertise it. Hash the batching key if multi-MB base64 states get slow (it is `JSON.stringify(state)`).
+- [ ] `@askif/openai` image input: live-verify (needs a quota that allows it), and consider the `detail` option.
 - [ ] `@askif/anthropic`: native Anthropic adapter (tool use / JSON output for probabilities).
 
 ## Release
