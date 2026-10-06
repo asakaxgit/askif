@@ -35,6 +35,7 @@ Ideas not yet done, roughly in priority order.
 
 ## New backends
 
+- [ ] `@askif/clef` live smoke test (needs `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_API_TOKEN`), first manual publish, and optional image input (Clef accepts up to 4 images; askif's `State` has no image slot yet).
 - [ ] `@askif/anthropic`: native Anthropic adapter (tool use / JSON output for probabilities).
 
 ## Release

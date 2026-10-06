@@ -8,10 +8,10 @@ day-to-day flow.
 
 **The actual `npm publish` call is a custom script** ([`.github/scripts/publish.ts`](.github/scripts/publish.ts)), not `changeset publish` directly. `changeset publish` auto-detects this as a pnpm workspace and shells out to `pnpm publish` — but pnpm's OIDC trusted-publishing support works by delegating to npm internally, and has a reported, unresolved bug ([pnpm/pnpm#9812](https://github.com/pnpm/pnpm/issues/9812)) where that delegation doesn't reliably reach npm's own OIDC path even with a new-enough npm present. Calling `npm publish` ourselves, directly, sidesteps it. The script still emits the same `git-tag` events `changesets/action` expects, so GitHub releases and git tags work exactly as they would with the default `changeset publish` path.
 
-`askif`, `@askif/jev`, and `@askif/openai` version **independently** (not lockstep) — a changeset
+`askif`, `@askif/jev`, `@askif/openai`, and `@askif/clef` version **independently** (not lockstep) — a changeset
 can bump any subset of them, since `.changeset/config.json` has no `fixed`/`linked` group. This is
 a deliberate difference from this author's other pnpm-workspace projects: unlike a tightly-coupled
-package family, the backend adapters (`@askif/jev`, `@askif/openai`, and eventually
+package family, the backend adapters (`@askif/jev`, `@askif/openai`, `@askif/clef`, and eventually
 `@askif/anthropic`) are each independent, with their own release cadence.
 
 ## One-time npm bootstrap (human only — needs an npmjs.com login)
@@ -23,8 +23,9 @@ I can't do any of this myself; it needs an interactive session on npmjs.com.
    `publishConfig` in `packages/jev/package.json` and `packages/openai/package.json`; `askif`
    itself is unscoped, which defaults to public).
 
-2. **All three packages have been published once, by hand** (`askif@0.1.0`, `@askif/jev@0.1.0`,
-   `@askif/openai@0.1.0`) — so this step, which trusted publishing normally requires before it can
+2. **Every package except `@askif/clef` has been published once, by hand** (`askif@0.1.0`,
+   `@askif/jev@0.1.0`, `@askif/openai@0.1.0`); `@askif/clef@0.1.0` still needs its first manual,
+   OTP-gated `npm publish` (use `npm`, not `pnpm publish`). For the others, this step, which trusted publishing normally requires before it can
    be configured, is already done. A future new package needs the same one manual, OTP-gated
    `npm publish` (use `npm`, not `pnpm publish`) before step 3 for it.
 
@@ -35,7 +36,7 @@ I can't do any of this myself; it needs an interactive session on npmjs.com.
    - Workflow filename: `release.yml`
    - Environment: leave blank (this workflow doesn't use a GitHub Environment)
 
-   Repeat for `askif`, `@askif/jev`, and `@askif/openai`.
+   Repeat for `askif`, `@askif/jev`, `@askif/openai`, and `@askif/clef`.
 
 Once this is done, `release.yml` can publish every future version with no npm credentials in CI
 at all — just the `id-token: write` permission already in the workflow.

@@ -18,6 +18,7 @@ on:
           - askif
           - "@askif/jev"
           - "@askif/openai"
+          - "@askif/clef"
           - all
         default: all
         required: true
