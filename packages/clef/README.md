@@ -62,6 +62,10 @@ await ask.if(
 );
 ```
 
+Try one of your own photos with `node --env-file=../../.env.local --import tsx examples/try-image.ts photo.jpg "shows a damaged parcel"`. It prints the probability of yes.
+
+**Known issue:** an image can be refused with `HTTP 413 ... estimated number of input and maximum output tokens (...) exceeded this model context window limit (65536)` even when it is small. It happened with a 720x565 JPEG that carried EXIF metadata and 250 DPI (Cloudflare estimated 152,996 tokens); the same picture downscaled to 480 px and re-encoded was accepted and cost a normal number of tokens. The cause was not isolated. If you hit it, downscale and re-encode the image (which also drops metadata).
+
 A base64 `data:image/...` string or a `{ content_type, base64 }` object anywhere in the state is picked up too. Each image becomes an `[image 1]`, `[image 2]` placeholder in the state, numbered in the order Clef receives them, so your question can refer to "image 1". More than 4 images, or a format other than PNG/JPEG/WebP, fails with `UNSUPPORTED_INPUT` before any request is sent.
 
 ## Cost and latency

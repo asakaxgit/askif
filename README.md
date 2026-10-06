@@ -232,6 +232,8 @@ The model sees each image where you put it, and your question can refer to it as
 | `@askif/openai` | PNG, JPEG, WebP, GIF (non-animated) |
 | `@askif/jev` | not supported |
 
+Tried so far on simple subjects: animals, everyday objects, shapes, a stop sign, a photograph of an old bicycle, Earth from the Moon. Subtler judgments, such as whether a photographed parcel is damaged, have not been tested here, so try your own photos (`@askif/clef` has `examples/try-image.ts` for that) before relying on one.
+
 A state with images sent to a backend that doesn't take them (or too many) fails with `UNSUPPORTED_INPUT` before any request, instead of sending base64 as text. Images are base64 only for now. Images that live in a bucket (R2, S3, GCS) or at a URL are planned: an image's `source` has a `kind` field so those can be added, and until then you download the bytes and pass them to `image()`. Backend authors: declare `limits.maxImages` and call `extractImages(state)` to get the images out of the state.
 
 ## Configuration
