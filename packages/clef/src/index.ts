@@ -80,6 +80,46 @@ const toClef = (question: Question): ClefQuestion => {
   }
 };
 
+/** An image as Clef takes it: a base64 data URL, or its content type and bytes. */
+type ClefImage = string | { content_type: string; base64: string };
+
+const MAX_IMAGES = 4;
+const IMAGE_DATA_URL = /^data:image\/(?:png|jpeg|webp);base64,/i;
+
+const isImageObject = (value: { [key: string]: Json }): value is { content_type: string; base64: string } => {
+  const { content_type: contentType, base64 } = value;
+  return (
+    Object.keys(value).length === 2 &&
+    typeof contentType === "string" &&
+    /^image\/(?:png|jpeg|webp)$/i.test(contentType) &&
+    typeof base64 === "string"
+  );
+};
+
+/**
+ * Moves images out of the state, since askif's state is plain JSON. Any base64 image data
+ * URL, or `{ content_type, base64 }` object, anywhere in the state becomes an entry in
+ * `images` and leaves "[image N]" behind (N counts from 1, in the order Clef gets them).
+ */
+const extractImages = (state: Json): { readonly state: Json; readonly images: readonly ClefImage[] } => {
+  const images: ClefImage[] = [];
+  const placeholder = (image: ClefImage): string => {
+    images.push(image);
+    return `[image ${images.length}]`;
+  };
+  const walk = (value: Json): Json => {
+    if (typeof value === "string") return IMAGE_DATA_URL.test(value) ? placeholder(value) : value;
+    if (Array.isArray(value)) return value.map(walk);
+    if (value !== null && typeof value === "object") {
+      if (isImageObject(value)) return placeholder({ content_type: value.content_type, base64: value.base64 });
+      return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, walk(entry)]));
+    }
+    return value;
+  };
+  const stripped = walk(state);
+  return { state: stripped, images };
+};
+
 const readProbability = (value: unknown): number | undefined =>
   typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1 ? value : undefined;
 
@@ -195,9 +235,14 @@ export const clef = (options: ClefOptions = {}): Backend => {
     name: "clef",
     limits: LIMITS,
     decide: async (state, questions) => {
+      const { state: text, images } = extractImages(state);
+      if (images.length > MAX_IMAGES) {
+        throw makeAskError("BACKEND_FAILED", `Clef takes at most ${MAX_IMAGES} images per state, got ${images.length}.`);
+      }
       const result = await call({
         model,
-        state: toEntry(state),
+        state: toEntry(text),
+        ...(images.length === 0 ? {} : { images }),
         questions: Object.fromEntries(Object.entries(questions).map(([id, q]) => [id, toClef(q)])),
       });
       const answers = isRecord(result) ? result["answers"] : undefined;
