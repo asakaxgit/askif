@@ -43,7 +43,8 @@
     "typecheck": "tsc -p tsconfig.json",
     "test": "node --import tsx --test test/*.test.ts",
     "example": "tsx examples/basic.ts",
-    "example:images": "tsx examples/images.ts"
+    "example:images": "tsx examples/images.ts",
+    "example:bench": "tsx examples/bench.ts"
   },
   "dependencies": {
     "askif": "^0.2.0"
