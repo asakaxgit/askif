@@ -48,4 +48,16 @@ export default {
 
 1–64 questions per request (askif splits larger batches; its own `maxBatchSize` defaults to 32, so raise it in `createAsk` to use all 64), 2–255 options per `switch`, 2–10 levels per `score`, a 65,536-token context (long text state is truncated by Clef).
 
-Clef can also read up to 4 images; askif's state is JSON, so images are not supported yet.
+## Images
+
+Clef can read up to 4 images (PNG, JPEG or WebP; 4 MiB each, 8 MiB total; no remote URLs). askif's state is plain JSON, so put images in the state and this backend moves them out: any base64 image data URL, or any `{ content_type, base64 }` object, anywhere in the state.
+
+```ts
+await ask.if(
+  { photo: `data:image/png;base64,${base64}`, note: "customer upload" },
+  "shows a damaged parcel",
+  () => openClaim(),
+);
+```
+
+The question and the rest of the state see an `[image 1]` placeholder where each image was (numbered in the order Clef receives them), so you can refer to "image 1" in your question. More than 4 images fails before any request is sent.
