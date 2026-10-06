@@ -42,7 +42,8 @@
     "build": "tsc -p tsconfig.esm.json && tsc -p tsconfig.cjs.json && echo '{\"type\":\"commonjs\"}' > dist/cjs/package.json",
     "typecheck": "tsc -p tsconfig.json",
     "test": "node --import tsx --test test/*.test.ts",
-    "example": "tsx examples/basic.ts"
+    "example": "tsx examples/basic.ts",
+    "example:images": "tsx examples/images.ts"
   },
   "dependencies": {
     "askif": "^0.2.0"
