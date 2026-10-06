@@ -19,6 +19,11 @@ export type JevOptions = TypeSafeClientConfig & {
 /** Limits documented for jev-1.13. */
 const LIMITS = { maxOptions: 255, maxLevels: 10 } as const;
 
+// The question/answer mapping below mirrors packages/clef/src/index.ts (same System One
+// wire format). Change both together; the shared fixture in
+// packages/askif/test/fixtures/system-one.ts is checked by both packages' tests.
+// Differences are deliberate: Jev trusts the SDK's response types, Clef validates them.
+
 /** TypeSafe accepts text, objects, arrays, or null. Numbers and booleans are sent as text. */
 const toEntry = (value: Json): EntryType =>
   typeof value === "number" || typeof value === "boolean" ? String(value) : value;

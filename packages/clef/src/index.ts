@@ -28,6 +28,12 @@ const LIMITS = { maxQuestionsPerCall: 64, maxOptions: 255, maxLevels: 10 } as co
 
 const DEFAULT_BASE_URL = "https://api.cloudflare.com/client/v4";
 
+// The question/answer mapping below mirrors packages/jev/src/index.ts (same System One
+// wire format). Change both together; the shared fixture in
+// packages/askif/test/fixtures/system-one.ts is checked by both packages' tests.
+// Differences are deliberate: Clef validates every answer (it has no SDK types to trust)
+// and leaves the "scale needs 2+ levels" check to askif core.
+
 type ClefQuestion =
   | { type: "noul"; instructions: Json; criteria?: { true?: Json; false?: Json } }
   | { type: "choice"; instructions: Json; criteria: Record<string, Json> }

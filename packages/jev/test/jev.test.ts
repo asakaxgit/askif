@@ -4,6 +4,7 @@ import { TypeSafeClient } from "@typesafe-ai/sdk";
 import { createAsk } from "askif";
 import type { Json } from "askif";
 import { jev } from "../src/index.js";
+import * as fixture from "../../askif/test/fixtures/system-one.js";
 
 const isRecord = (value: Json | undefined): value is { [key: string]: Json } =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -68,4 +69,30 @@ test("the TypeSafe backend sends and reads the System One format", async () => {
     q1: { type: "choice", instructions: "Which team?", criteria: { returns: "Exchanges", billing: null } },
     q2: { type: "score", instructions: "How severe?", criteria: ["a", "b", "c"] },
   });
+});
+
+test("matches the shared System One contract (same fixture as @askif/clef)", async () => {
+  const bodies: Json[] = [];
+  const client = new TypeSafeClient({
+    apiKey: "test",
+    retry: { maxRetries: 0 },
+    fetch: async (_url, init) => {
+      bodies.push(JSON.parse(String(init?.body)));
+      return new Response(
+        JSON.stringify({
+          model: "jev-1.13.0",
+          answers: fixture.wireAnswers,
+          usage: { input_tokens: 1, output_tokens: 0 },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    },
+  });
+  const answers = await jev({ client }).decide(fixture.state, fixture.questions);
+
+  const body = bodies[0];
+  assert.ok(isRecord(body));
+  assert.deepEqual(body["state"], fixture.state);
+  assert.deepEqual(body["questions"], fixture.wireQuestions);
+  assert.deepEqual(answers, fixture.expectedAnswers);
 });

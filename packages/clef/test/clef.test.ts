@@ -3,6 +3,7 @@ import { test } from "node:test";
 import { createAsk, isAskError } from "askif";
 import type { Json } from "askif";
 import { clef } from "../src/index.js";
+import * as fixture from "../../askif/test/fixtures/system-one.js";
 
 const isRecord = (value: unknown): value is { [key: string]: unknown } =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -78,6 +79,24 @@ test("the Clef backend sends and reads the System One format over REST", async (
     returns: "Exchanges",
     billing: null,
   });
+});
+
+test("matches the shared System One contract (same fixture as @askif/jev)", async () => {
+  const bodies: unknown[] = [];
+  const answers = await clef({
+    accountId: "a",
+    apiToken: "t",
+    fetch: async (_url, init) => {
+      bodies.push(JSON.parse(String(init?.body)));
+      return envelope({ model: "@cf/cloudflare/clef", answers: fixture.wireAnswers, usage: { input_tokens: 1, output_tokens: 0 } });
+    },
+  }).decide(fixture.state, fixture.questions);
+
+  const body = bodies[0];
+  assert.ok(isRecord(body));
+  assert.deepEqual(body["state"], fixture.state);
+  assert.deepEqual(body["questions"], fixture.wireQuestions);
+  assert.deepEqual(answers, fixture.expectedAnswers);
 });
 
 test("the Clef backend works through a Workers AI binding", async () => {
