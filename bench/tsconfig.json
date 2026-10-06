@@ -1,0 +1,4 @@
+{
+  "extends": "../packages/clef/tsconfig.json",
+  "include": ["."]
+}
