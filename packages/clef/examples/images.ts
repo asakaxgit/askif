@@ -3,6 +3,7 @@
 //
 // Run with: CLOUDFLARE_ACCOUNT_ID=... CLOUDFLARE_API_TOKEN=... pnpm --filter @askif/clef run example:images
 import { readFileSync } from "node:fs";
+import type { SwitchChain } from "askif";
 import { ask } from "../src/index.js";
 
 type Entry = {
@@ -19,8 +20,9 @@ const run = async (dir: URL, manifest: Entry[]): Promise<void> => {
       if (q.kind === "yesno") {
         got = await ask.is({ photo }, q.question);
       } else {
-        const chain = ask.switch({ photo }, q.question);
-        for (const option of q.options ?? []) chain.case(option);
+        // `.case()` returns the chain to continue with, so keep reassigning it.
+        let chain: SwitchChain<readonly string[]> = ask.switch({ photo }, q.question);
+        for (const option of q.options ?? []) chain = chain.case(option);
         got = (await chain).choice;
       }
       console.log(got === q.expected ? "ok  " : "FAIL", file, "-", q.question, "->", got, `(expected ${q.expected})`);
