@@ -1,0 +1,152 @@
+[
+  {
+    "file": "cat.jpg",
+    "contentType": "image/jpeg",
+    "description": "A cat with a cloth tied round its neck, next to a patterned ball; sepia photograph.",
+    "title": "Photograph of pet cat taken by Tokugawa Yoshinobu",
+    "creator": "Tokugawa Yoshinobu (徳川慶喜)",
+    "date": "c. 1850s (19th century)",
+    "source": "https://commons.wikimedia.org/wiki/File:Photograph_of_pet_cat_taken_by_Tokugawa_Yoshinobu.jpg",
+    "originalCredit": "Shibusawa Eiichi, Tokugawa Yoshinobu-kō den, vol. 4, 1918; National Diet Library Digital Collections, PID 1917803",
+    "license": "Public domain (age): Commons templates PD-old-100, PD-US-expired, PD-Japan-oldphoto",
+    "questions": [
+      {
+        "kind": "yesno",
+        "question": "Is there a cat in the image?",
+        "expected": true
+      },
+      {
+        "kind": "choice",
+        "question": "Which animal is shown?",
+        "options": [
+          "cat",
+          "dog",
+          "bird"
+        ],
+        "expected": "cat"
+      }
+    ],
+    "sha256": "8ab3b7134cb12f5775e81b66d715ec3e6c6216535bb2895acc058be6eafe1bd2",
+    "bytes": 186017,
+    "modifications": "Downscaled by Wikimedia Commons' thumbnail service (max 960 px); otherwise unmodified.",
+    "retrieved": "2026-10-06"
+  },
+  {
+    "file": "dog.jpg",
+    "contentType": "image/jpeg",
+    "description": "Oil painting of an adult dog resting on straw with several puppies, and a bowl of milk.",
+    "title": "Bernese Mountain Dog and Her Pups",
+    "creator": "Benno Adam (1812-1892)",
+    "date": "1862",
+    "source": "https://commons.wikimedia.org/wiki/File:Adam,_Benno,_Bernese_Mountain_Dog_and_Her_Pups.jpg",
+    "originalCredit": "Painting reproduced on Wikimedia Commons (the 2D reproduction is covered by Commons' PD-Art)",
+    "license": "Public domain (age): Commons templates PD-Art, PD-old-X-expired, PD-US-expired",
+    "questions": [
+      {
+        "kind": "yesno",
+        "question": "Is there a dog in the image?",
+        "expected": true
+      },
+      {
+        "kind": "yesno",
+        "question": "Is this a photograph of a cat?",
+        "expected": false
+      }
+    ],
+    "sha256": "2f4fdec9404f12a2bc0525bb8c18613b18117fe9967c4350f8d01e0a593fc597",
+    "bytes": 34437,
+    "modifications": "Downscaled by Wikimedia Commons' thumbnail service (max 960 px); otherwise unmodified.",
+    "retrieved": "2026-10-06"
+  },
+  {
+    "file": "bicycle.jpg",
+    "contentType": "image/jpeg",
+    "description": "Photograph of an 1886 'Ivel' racing safety bicycle against a plain background, captioned 'No. 33. Ivel Racing Safety Bicycle, 1886.'",
+    "title": "Ivel Racing Safety Bicycle, from Bartleet's Bicycle Book, No. 33",
+    "creator": "Unknown author",
+    "date": "1886",
+    "source": "https://commons.wikimedia.org/wiki/File:1886._Ivel_Racing_Safety_Bicycle._From_%27Bartleet%27s_Bicycle_Book%27_No._33.jpg",
+    "originalCredit": "https://www.gracesguide.co.uk/Ivel_Cycle_Co",
+    "license": "Public domain (unknown author, published >70 years ago): Commons template PD-UK-unknown",
+    "questions": [
+      {
+        "kind": "yesno",
+        "question": "Is there a bicycle in the image?",
+        "expected": true
+      },
+      {
+        "kind": "choice",
+        "question": "Which vehicle is shown?",
+        "options": [
+          "bicycle",
+          "car",
+          "boat"
+        ],
+        "expected": "bicycle"
+      }
+    ],
+    "sha256": "54e1ea27fb5ddf26db3a3d0202d7a8abf4376a9151c0c315e004992a04289a1e",
+    "bytes": 157359,
+    "modifications": "Downscaled by Wikimedia Commons' thumbnail service (max 960 px); otherwise unmodified.",
+    "retrieved": "2026-10-06"
+  },
+  {
+    "file": "apple.png",
+    "contentType": "image/png",
+    "description": "Illustration of an apple cut in half, showing seeds, on a transparent background.",
+    "title": "USDA 2026 Apple half",
+    "creator": "U.S. Department of Health and Human Services / USDA (federal government work)",
+    "date": "2026-01-08",
+    "source": "https://commons.wikimedia.org/wiki/File:USDA_2026_Apple_half.png",
+    "originalCredit": "Dietary Guidelines for Americans 2025-2030, https://web.archive.org/web/20260109084616/https://cdn.realfood.gov/DGA.pdf",
+    "license": "Public domain (US federal government work): Commons templates PD-USGov, PD-US. Uploader's attribution to a federal publication, not independently verified.",
+    "questions": [
+      {
+        "kind": "yesno",
+        "question": "Is there a piece of fruit in the image?",
+        "expected": true
+      },
+      {
+        "kind": "choice",
+        "question": "Which fruit is shown?",
+        "options": [
+          "apple",
+          "banana",
+          "orange"
+        ],
+        "expected": "apple"
+      }
+    ],
+    "sha256": "68c0a2e72f0056a466e80754cd46d385b3c2916b93287f8b4fbcf516e7dcb682",
+    "bytes": 138859,
+    "modifications": "Downscaled by Wikimedia Commons' thumbnail service (max 960 px); otherwise unmodified.",
+    "retrieved": "2026-10-06"
+  },
+  {
+    "file": "earthrise.jpg",
+    "contentType": "image/jpeg",
+    "description": "The Earth, half in shadow, above the grey cratered lunar horizon against black space.",
+    "title": "Earthrise (Apollo 8, AS8-14-2383)",
+    "creator": "Bill Anders / NASA",
+    "date": "1968-12-24",
+    "source": "https://commons.wikimedia.org/wiki/File:NASA-Apollo8-Dec24-Earthrise.jpg",
+    "originalCredit": "NASA, http://www.hq.nasa.gov/office/pao/History/alsj/a410/AS8-14-2383HR.jpg",
+    "license": "Public domain (US government work; NASA: 'generally not subject to copyright in the United States', credit NASA, imply no endorsement, https://www.nasa.gov/nasa-brand-center/images-and-media/). The Commons page has no formal PD tag; this rests on NASA's policy.",
+    "questions": [
+      {
+        "kind": "yesno",
+        "question": "Does the image show the Earth?",
+        "expected": true
+      },
+      {
+        "kind": "yesno",
+        "question": "Is there a person in the image?",
+        "expected": false
+      }
+    ],
+    "sha256": "e4e5172cdc97b3229c9051732d978bbba69cd0c8184be6f655b2471d355b9884",
+    "bytes": 64374,
+    "modifications": "Downscaled by Wikimedia Commons' thumbnail service (max 960 px); otherwise unmodified.",
+    "retrieved": "2026-10-06"
+  }
+]
