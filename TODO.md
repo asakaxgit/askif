@@ -35,7 +35,7 @@ Ideas not yet done, roughly in priority order.
 
 ## New backends
 
-- [ ] `@askif/clef` live smoke test (needs `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_API_TOKEN`), and first manual publish. Image input is supported by pulling data URLs / `{ content_type, base64 }` out of the state; a first-class image type in askif's `State` would be cleaner but touches core.
+- [ ] `@askif/clef`: first manual publish. (Live smoke test done 2026-10-06: 22/22 image answers correct; tokens and latency measured, see the package README. Not yet live-tested: scale questions, batching through the default `ask`, the Workers binding, error paths.) Image input is supported by pulling data URLs / `{ content_type, base64 }` out of the state; a first-class image type in askif's `State` would be cleaner but touches core.
 - [ ] If a third System One backend appears, move the shared question/answer mapping from `@askif/jev` and `@askif/clef` into `askif` (until then, `packages/askif/test/fixtures/system-one.ts` keeps them in step).
 - [ ] `@askif/anthropic`: native Anthropic adapter (tool use / JSON output for probabilities).
 
