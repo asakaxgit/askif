@@ -71,17 +71,52 @@ export type BackendLimits = {
   readonly maxOptions?: number;
   readonly maxLevels?: number;
   readonly maxQuestionsPerCall?: number;
+  /** Most distinct states in one call. Read only when `multiState` is true. */
+  readonly maxStatesPerCall?: number;
 };
+
+/**
+ * One question's outcome from `decide`.
+ * `{ error }` fails that question alone; the rest of the call still resolves.
+ */
+export type QuestionResult = Answer | { readonly error: unknown };
+
+/** One question about one state, as `decideMany` receives it. */
+export type DecisionItem = {
+  /** Matches the id on the corresponding {@link ItemResult}. */
+  readonly id: string;
+  readonly state: State;
+  readonly question: Question;
+};
+
+/** One item's outcome from `decideMany`. */
+export type ItemResult =
+  | { readonly id: string; readonly answer: Answer }
+  | { readonly id: string; readonly error: unknown };
 
 /** Anything that can answer yes/no, choice, and scale questions. */
 export type Backend = {
   readonly name: string;
   readonly limits?: BackendLimits;
-  /** Answer every question about one state. Keys in the result match keys in `questions`. */
+  /**
+   * When true, askif may pass same-tick questions about different states to
+   * `decideMany` in one call. Omit it to keep one `decide` call per state.
+   */
+  readonly multiState?: boolean;
+  /**
+   * Answer every question about one state. Keys in the result match keys in `questions`.
+   * A value of `{ error }` fails only that question.
+   */
   readonly decide: (
     state: State,
     questions: Readonly<Record<string, Question>>,
-  ) => Promise<Readonly<Record<string, Answer>>>;
+  ) => Promise<Readonly<Record<string, QuestionResult>>>;
+  /**
+   * Answer a list of (state, question) items in one call.
+   * Required when `multiState` is true; ignored otherwise.
+   * Throw only when the whole call failed. `{ error }` fails one item.
+   */
+  readonly decideMany?: (items: readonly DecisionItem[]) => Promise<readonly ItemResult[]>;
 };
 
 /* -------------------------------------------------------------------------- */
@@ -98,6 +133,11 @@ export type AskConfig = {
   readonly minConfidence: number;
   /** Most questions sent in one backend call. */
   readonly maxBatchSize: number;
+  /**
+   * Most distinct states combined into one call, on a backend with `multiState`.
+   * `1` keeps one call per state.
+   */
+  readonly maxStatesPerBatch: number;
 };
 
 export type CallOptions = {

@@ -1,11 +1,20 @@
 // Compile-time checks: `npm run typecheck` fails if these types regress.
 import { test } from "node:test";
 import { createAsk, mock } from "../src/index.js";
+import type { Backend } from "../src/index.js";
 
 const ask = createAsk({ backend: mock(() => ({ kind: "yesno", probability: 1 })) });
 
 type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
 const expectType = <T extends true>(): T | undefined => undefined;
+
+test("a backend that only implements decide still typechecks", () => {
+  const legacy: Backend = {
+    name: "legacy",
+    decide: async () => ({ q: { kind: "yesno", probability: 1 } }),
+  };
+  void legacy;
+});
 
 test("result types are narrowed to the declared keys", () => {
   const typeOnly = async () => {
