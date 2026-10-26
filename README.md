@@ -253,7 +253,7 @@ The model sees each image where you put it, and your question can refer to it as
 | --- | --- |
 | `@askif/clef` | up to 4: PNG, JPEG, WebP |
 | `@askif/openai` | PNG, JPEG, WebP, GIF (non-animated) |
-| `@askif/jev` | not supported |
+| `@askif/jev` | opt-in, up to 64: PNG and JPEG (`jev({ images: true })`; see the [jev README](packages/jev/README.md#images)) |
 
 Tried so far on simple subjects: animals, everyday objects, shapes, a stop sign, a photograph of an old bicycle, Earth from the Moon. Subtler judgments, such as whether a photographed parcel is damaged, have not been tested here, so try your own photos (`@askif/clef` has `examples/try-image.ts` for that) before relying on one.
 
