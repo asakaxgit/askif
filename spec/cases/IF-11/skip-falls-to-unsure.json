@@ -1,0 +1,72 @@
+{
+  "id": "IF-11/skip-falls-to-unsure",
+  "criteria": [
+    "IF-11"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "yesno",
+            "probability": 0.05
+          },
+          {
+            "kind": "yesno",
+            "probability": 0.5
+          },
+          {
+            "kind": "yesno",
+            "probability": 0.01
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "if",
+      "state": "x",
+      "unsureMode": "skip",
+      "handlers": [
+        "then",
+        "elseif",
+        "else",
+        "unsure"
+      ],
+      "conditions": [
+        {
+          "condition": "A"
+        },
+        {
+          "condition": "U"
+        },
+        {
+          "condition": "no"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "branch": "unsure",
+        "index": 1,
+        "condition": "U"
+      }
+    ],
+    "handlersRun": [
+      [
+        "unsure"
+      ]
+    ],
+    "errors": [
+      null
+    ],
+    "backendCalls": 1
+  }
+}

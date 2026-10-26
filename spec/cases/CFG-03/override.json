@@ -1,0 +1,49 @@
+{
+  "id": "CFG-03/override",
+  "criteria": [
+    "CFG-03"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "override": {
+      "decide": [
+        {
+          "answers": [
+            {
+              "kind": "yesno",
+              "probability": 0.9
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "is",
+      "state": "x",
+      "condition": "y",
+      "backend": "override"
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "value": true
+      }
+    ],
+    "errors": [
+      null
+    ],
+    "backendCalls": 0,
+    "decide": [],
+    "overrideDecide": [
+      {
+        "questionCount": 1
+      }
+    ]
+  }
+}

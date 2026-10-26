@@ -1,0 +1,58 @@
+{
+  "id": "SC-02/split-ends",
+  "criteria": [
+    "SC-02"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "scale",
+            "probabilities": [
+              0.5,
+              0,
+              0.5
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "score",
+      "state": "x",
+      "question": "Q",
+      "levels": [
+        {
+          "key": "low"
+        },
+        {
+          "key": "mid"
+        },
+        {
+          "key": "high"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "level": "low",
+        "index": 0,
+        "score": 1,
+        "normalized": 0.5
+      }
+    ],
+    "errors": [
+      null
+    ],
+    "backendCalls": 1
+  }
+}

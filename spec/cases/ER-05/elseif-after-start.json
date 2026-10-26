@@ -1,0 +1,42 @@
+{
+  "id": "ER-05/elseif-after-start",
+  "criteria": [
+    "ER-05"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "yesno",
+            "probability": 0.01
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "if",
+      "state": "x",
+      "condition": "A",
+      "afterStart": "elseif"
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "branch": "else",
+        "afterStartError": "CHAIN_STARTED"
+      }
+    ],
+    "errors": [
+      null
+    ],
+    "backendCalls": 1
+  }
+}

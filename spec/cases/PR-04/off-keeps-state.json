@@ -1,0 +1,52 @@
+{
+  "id": "PR-04/off-keeps-state",
+  "criteria": [
+    "PR-04"
+  ],
+  "tags": [
+    "deferred"
+  ],
+  "config": {
+    "protection": false
+  },
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "yesno",
+            "probability": 0.9
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "is",
+      "state": "a​b",
+      "condition": "kept"
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "value": true
+      }
+    ],
+    "errors": [
+      null
+    ],
+    "backendCalls": 1,
+    "decide": [
+      {
+        "state": "a​b",
+        "context": {
+          "protection": false,
+          "images": "auto"
+        }
+      }
+    ]
+  }
+}

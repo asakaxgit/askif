@@ -1,0 +1,54 @@
+{
+  "id": "ER-05/level-after-start",
+  "criteria": [
+    "ER-05"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "scale",
+            "probabilities": [
+              1,
+              0
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "score",
+      "state": "x",
+      "question": "Q",
+      "levels": [
+        {
+          "key": "a"
+        },
+        {
+          "key": "b"
+        }
+      ],
+      "afterStart": "level"
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "branch": "level",
+        "level": "a",
+        "afterStartError": "CHAIN_STARTED"
+      }
+    ],
+    "errors": [
+      null
+    ],
+    "backendCalls": 1
+  }
+}

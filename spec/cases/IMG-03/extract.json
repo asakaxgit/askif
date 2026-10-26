@@ -1,0 +1,85 @@
+{
+  "id": "IMG-03/extract",
+  "criteria": [
+    "IMG-03"
+  ],
+  "tags": [
+    "deferred"
+  ],
+  "calls": [
+    {
+      "group": 0,
+      "op": "extractImages",
+      "state": {
+        "note": "look",
+        "first": {
+          "type": "image",
+          "source": {
+            "kind": "base64",
+            "mediaType": "image/png",
+            "data": "AAAA"
+          }
+        },
+        "nested": [
+          {
+            "legacy": {
+              "content_type": "image/jpeg",
+              "base64": "BBBB"
+            }
+          },
+          "data:image/webp;base64,CCCC"
+        ],
+        "other": {
+          "content_type": "text/plain",
+          "base64": "aGk="
+        }
+      }
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "state": {
+          "note": "look",
+          "first": "[image 1]",
+          "nested": [
+            {
+              "legacy": "[image 2]"
+            },
+            "[image 3]"
+          ],
+          "other": {
+            "content_type": "text/plain",
+            "base64": "aGk="
+          }
+        },
+        "images": [
+          {
+            "type": "image",
+            "source": {
+              "kind": "base64",
+              "mediaType": "image/png",
+              "data": "AAAA"
+            }
+          },
+          {
+            "type": "image",
+            "source": {
+              "kind": "base64",
+              "mediaType": "image/jpeg",
+              "data": "BBBB"
+            }
+          },
+          {
+            "type": "image",
+            "source": {
+              "kind": "base64",
+              "mediaType": "image/webp",
+              "data": "CCCC"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

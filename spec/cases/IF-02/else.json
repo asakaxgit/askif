@@ -1,0 +1,53 @@
+{
+  "id": "IF-02/else",
+  "criteria": [
+    "IF-02"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "yesno",
+            "probability": 0.03
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "if",
+      "state": "cat",
+      "condition": "is a vehicle",
+      "handlers": [
+        "then",
+        "else"
+      ]
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "branch": "else",
+        "probabilities": [
+          0.03
+        ],
+        "unsureIndexes": []
+      }
+    ],
+    "handlersRun": [
+      [
+        "else"
+      ]
+    ],
+    "errors": [
+      null
+    ],
+    "backendCalls": 1
+  }
+}

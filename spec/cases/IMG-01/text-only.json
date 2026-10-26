@@ -1,0 +1,37 @@
+{
+  "id": "IMG-01/text-only",
+  "criteria": [
+    "IMG-01"
+  ],
+  "tags": [
+    "deferred"
+  ],
+  "calls": [
+    {
+      "group": 0,
+      "op": "is",
+      "state": {
+        "photo": {
+          "type": "image",
+          "source": {
+            "kind": "base64",
+            "mediaType": "image/png",
+            "data": "AAAA"
+          }
+        }
+      },
+      "condition": "is a cat"
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "error": "UNSUPPORTED_INPUT"
+      }
+    ],
+    "errors": [
+      "UNSUPPORTED_INPUT"
+    ],
+    "backendCalls": 0
+  }
+}

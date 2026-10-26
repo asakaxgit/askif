@@ -1,0 +1,51 @@
+{
+  "id": "CFG-01/default-question-batch",
+  "criteria": [
+    "CFG-01"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": {
+          "each": {
+            "kind": "yesno",
+            "probability": 0.1
+          }
+        }
+      },
+      {
+        "answers": {
+          "each": {
+            "kind": "yesno",
+            "probability": 0.1
+          }
+        }
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "is",
+      "state": "x",
+      "conditionPrefix": "q",
+      "count": 33
+    }
+  ],
+  "expect": {
+    "backendCalls": 2,
+    "decide": [
+      {
+        "state": "x",
+        "questionCount": 32
+      },
+      {
+        "state": "x",
+        "questionCount": 1
+      }
+    ]
+  }
+}

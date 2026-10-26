@@ -1,0 +1,50 @@
+{
+  "id": "IF-03/below-band",
+  "criteria": [
+    "IF-03"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "yesno",
+            "probability": 0.19
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "if",
+      "state": "x",
+      "condition": "edge",
+      "handlers": [
+        "then",
+        "else",
+        "unsure"
+      ]
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "branch": "else"
+      }
+    ],
+    "handlersRun": [
+      [
+        "else"
+      ]
+    ],
+    "errors": [
+      null
+    ],
+    "backendCalls": 1
+  }
+}

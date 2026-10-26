@@ -1,0 +1,66 @@
+{
+  "id": "PR-05/level-description",
+  "criteria": [
+    "PR-05"
+  ],
+  "tags": [
+    "deferred"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "scale",
+            "probabilities": [
+              1,
+              0
+            ],
+            "confidence": 1
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "score",
+      "state": "state",
+      "question": "rate",
+      "levels": [
+        {
+          "key": "a​b <!-- keep -->"
+        },
+        {
+          "key": "plain"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "level": "a​b <!-- keep -->",
+        "flags": null
+      }
+    ],
+    "errors": [
+      null
+    ],
+    "backendCalls": 1,
+    "decide": [
+      {
+        "questions": [
+          {
+            "kind": "scale",
+            "levels": [
+              "ab <!-- keep -->",
+              "plain"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

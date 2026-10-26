@@ -1,0 +1,86 @@
+{
+  "id": "IF-09/per-branch-threshold",
+  "criteria": [
+    "IF-09"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "yesno",
+            "probability": 0.05
+          },
+          {
+            "kind": "yesno",
+            "probability": 0.6
+          }
+        ]
+      },
+      {
+        "answers": [
+          {
+            "kind": "yesno",
+            "probability": 0.05
+          },
+          {
+            "kind": "yesno",
+            "probability": 0.6
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "if",
+      "state": "x",
+      "conditions": [
+        {
+          "condition": "A"
+        },
+        {
+          "condition": "borderline",
+          "threshold": 0.7
+        }
+      ]
+    },
+    {
+      "group": 1,
+      "op": "if",
+      "state": "x",
+      "handlers": [
+        "elseif"
+      ],
+      "conditions": [
+        {
+          "condition": "A"
+        },
+        {
+          "condition": "borderline",
+          "threshold": 0.5
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "branch": "else"
+      },
+      {
+        "branch": "elseif",
+        "index": 1
+      }
+    ],
+    "errors": [
+      null,
+      null
+    ],
+    "backendCalls": 2
+  }
+}

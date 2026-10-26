@@ -1,0 +1,43 @@
+{
+  "id": "ER-03/wrong-kind",
+  "criteria": [
+    "ER-03"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "choice",
+            "probabilities": {
+              "a": 1,
+              "b": 0
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "is",
+      "state": "x",
+      "condition": "y"
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "error": "BAD_RESPONSE"
+      }
+    ],
+    "errors": [
+      "BAD_RESPONSE"
+    ],
+    "backendCalls": 1
+  }
+}

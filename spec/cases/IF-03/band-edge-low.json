@@ -1,0 +1,51 @@
+{
+  "id": "IF-03/band-edge-low",
+  "criteria": [
+    "IF-03"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "yesno",
+            "probability": 0.2
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "if",
+      "state": "x",
+      "condition": "edge",
+      "handlers": [
+        "then",
+        "else",
+        "unsure"
+      ]
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "branch": "unsure",
+        "probability": 0.2
+      }
+    ],
+    "handlersRun": [
+      [
+        "unsure"
+      ]
+    ],
+    "errors": [
+      null
+    ],
+    "backendCalls": 1
+  }
+}

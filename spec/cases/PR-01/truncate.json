@@ -1,0 +1,51 @@
+{
+  "id": "PR-01/truncate",
+  "criteria": [
+    "PR-01"
+  ],
+  "tags": [
+    "deferred"
+  ],
+  "config": {
+    "protection": {
+      "maxStringChars": 4
+    }
+  },
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "yesno",
+            "probability": 0.9
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "is",
+      "state": "hello",
+      "condition": "capped"
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "value": true
+      }
+    ],
+    "errors": [
+      null
+    ],
+    "backendCalls": 1,
+    "decide": [
+      {
+        "state": "hell…[truncated 1 chars]",
+        "questionCount": 1
+      }
+    ]
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "id": "SC-03/low-confidence",
+  "criteria": [
+    "SC-03"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "scale",
+            "probabilities": [
+              0.34,
+              0.33,
+              0.33
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "score",
+      "state": "x",
+      "question": "Q",
+      "handlers": [
+        "level",
+        "unsure"
+      ],
+      "levels": [
+        {
+          "key": "low"
+        },
+        {
+          "key": "mid"
+        },
+        {
+          "key": "high"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "branch": "unsure",
+        "level": "low",
+        "index": 0
+      }
+    ],
+    "handlersRun": [
+      [
+        "unsure"
+      ]
+    ],
+    "errors": [
+      null
+    ],
+    "backendCalls": 1
+  }
+}

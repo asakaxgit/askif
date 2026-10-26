@@ -1,0 +1,45 @@
+{
+  "id": "IMG-03/from",
+  "criteria": [
+    "IMG-03"
+  ],
+  "tags": [
+    "deferred"
+  ],
+  "calls": [
+    {
+      "group": 0,
+      "op": "extractImages",
+      "from": 3,
+      "state": {
+        "photo": {
+          "type": "image",
+          "source": {
+            "kind": "base64",
+            "mediaType": "image/png",
+            "data": "AAAA"
+          }
+        }
+      }
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "state": {
+          "photo": "[image 3]"
+        },
+        "images": [
+          {
+            "type": "image",
+            "source": {
+              "kind": "base64",
+              "mediaType": "image/png",
+              "data": "AAAA"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "id": "LM-01/at-least-one",
+  "criteria": [
+    "LM-01"
+  ],
+  "tags": [
+    "core"
+  ],
+  "config": {
+    "maxBatchSize": 4
+  },
+  "backend": {
+    "limits": {
+      "maxQuestionsPerCall": 0
+    }
+  },
+  "script": {
+    "decide": [
+      {
+        "answers": {
+          "each": {
+            "kind": "yesno",
+            "probability": 0.1
+          }
+        }
+      },
+      {
+        "answers": {
+          "each": {
+            "kind": "yesno",
+            "probability": 0.1
+          }
+        }
+      },
+      {
+        "answers": {
+          "each": {
+            "kind": "yesno",
+            "probability": 0.1
+          }
+        }
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "is",
+      "state": "x",
+      "conditionPrefix": "c",
+      "count": 3
+    }
+  ],
+  "expect": {
+    "backendCalls": 3,
+    "decide": [
+      {
+        "questionCount": 1
+      },
+      {
+        "questionCount": 1
+      },
+      {
+        "questionCount": 1
+      }
+    ]
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "id": "ER-03/missing-answer",
+  "criteria": [
+    "ER-03"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "yesno",
+            "probability": 0.9
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "is",
+      "state": "x",
+      "condition": "good"
+    },
+    {
+      "group": 0,
+      "op": "is",
+      "state": "x",
+      "condition": "bad"
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "value": true
+      },
+      {
+        "error": "BAD_RESPONSE"
+      }
+    ],
+    "errors": [
+      null,
+      "BAD_RESPONSE"
+    ],
+    "backendCalls": 1
+  }
+}

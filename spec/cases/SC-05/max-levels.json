@@ -1,0 +1,44 @@
+{
+  "id": "SC-05/max-levels",
+  "criteria": [
+    "SC-05"
+  ],
+  "tags": [
+    "core"
+  ],
+  "backend": {
+    "limits": {
+      "maxLevels": 2
+    }
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "score",
+      "state": "x",
+      "question": "Q",
+      "levels": [
+        {
+          "key": "a"
+        },
+        {
+          "key": "b"
+        },
+        {
+          "key": "c"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "error": "INVALID_QUESTION"
+      }
+    ],
+    "errors": [
+      "INVALID_QUESTION"
+    ],
+    "backendCalls": 0
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "id": "IMG-02/reject",
+  "criteria": [
+    "IMG-02"
+  ],
+  "tags": [
+    "deferred"
+  ],
+  "calls": [
+    {
+      "group": 0,
+      "op": "image",
+      "input": {
+        "bytes": [
+          1,
+          2,
+          3,
+          4
+        ]
+      }
+    },
+    {
+      "group": 1,
+      "op": "image",
+      "input": {
+        "base64": "not base64 !!"
+      },
+      "mediaType": "image/png"
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "error": "UNSUPPORTED_INPUT"
+      },
+      {
+        "error": "UNSUPPORTED_INPUT"
+      }
+    ],
+    "errors": [
+      "UNSUPPORTED_INPUT",
+      "UNSUPPORTED_INPUT"
+    ]
+  }
+}

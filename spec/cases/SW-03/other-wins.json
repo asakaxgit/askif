@@ -1,0 +1,60 @@
+{
+  "id": "SW-03/other-wins",
+  "criteria": [
+    "SW-03"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "choice",
+            "probabilities": {
+              "returns": 0.1,
+              "other": 0.9
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "switch",
+      "state": "x",
+      "question": "Which team?",
+      "handlers": [
+        "other"
+      ],
+      "options": [
+        {
+          "key": "returns"
+        },
+        {
+          "key": "other"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "branch": "case",
+        "choice": "other"
+      }
+    ],
+    "handlersRun": [
+      [
+        "other"
+      ]
+    ],
+    "errors": [
+      null
+    ],
+    "backendCalls": 1
+  }
+}

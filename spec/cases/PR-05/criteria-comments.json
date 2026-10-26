@@ -1,0 +1,55 @@
+{
+  "id": "PR-05/criteria-comments",
+  "criteria": [
+    "PR-05"
+  ],
+  "tags": [
+    "deferred"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "yesno",
+            "probability": 0.9
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "is",
+      "state": "order",
+      "condition": "refundable",
+      "criteria": {
+        "true": "a​b <!-- keep -->"
+      }
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "value": true
+      }
+    ],
+    "errors": [
+      null
+    ],
+    "backendCalls": 1,
+    "decide": [
+      {
+        "questions": [
+          {
+            "kind": "yesno",
+            "criteria": {
+              "true": "ab <!-- keep -->"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

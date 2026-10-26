@@ -1,0 +1,68 @@
+{
+  "id": "IF-05/is-and-probability",
+  "criteria": [
+    "IF-05"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "yesno",
+            "probability": 0.97
+          },
+          {
+            "kind": "yesno",
+            "probability": 0.03
+          },
+          {
+            "kind": "yesno",
+            "probability": 0.03
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "is",
+      "state": "cat",
+      "condition": "is animal"
+    },
+    {
+      "group": 0,
+      "op": "is",
+      "state": "cat",
+      "condition": "is a vehicle"
+    },
+    {
+      "group": 0,
+      "op": "probability",
+      "state": "cat",
+      "condition": "is a vehicle"
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "value": true
+      },
+      {
+        "value": false
+      },
+      {
+        "value": 0.03
+      }
+    ],
+    "errors": [
+      null,
+      null,
+      null
+    ],
+    "backendCalls": 1
+  }
+}

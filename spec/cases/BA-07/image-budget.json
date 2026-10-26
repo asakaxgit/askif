@@ -1,0 +1,98 @@
+{
+  "id": "BA-07/image-budget",
+  "criteria": [
+    "BA-07"
+  ],
+  "tags": [
+    "deferred"
+  ],
+  "backend": {
+    "multiState": true,
+    "hasDecideMany": true,
+    "limits": {
+      "maxImages": 1
+    }
+  },
+  "script": {
+    "decide": [
+      {
+        "answers": {
+          "each": {
+            "kind": "yesno",
+            "probability": 1
+          }
+        }
+      },
+      {
+        "answers": {
+          "each": {
+            "kind": "yesno",
+            "probability": 1
+          }
+        }
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "is",
+      "state": {
+        "id": "a",
+        "photo": {
+          "type": "image",
+          "source": {
+            "kind": "base64",
+            "mediaType": "image/png",
+            "data": "AAAA"
+          }
+        }
+      },
+      "condition": "one"
+    },
+    {
+      "group": 0,
+      "op": "is",
+      "state": {
+        "id": "a",
+        "photo": {
+          "type": "image",
+          "source": {
+            "kind": "base64",
+            "mediaType": "image/png",
+            "data": "AAAA"
+          }
+        }
+      },
+      "condition": "two"
+    },
+    {
+      "group": 0,
+      "op": "is",
+      "state": {
+        "id": "b",
+        "photo": {
+          "type": "image",
+          "source": {
+            "kind": "base64",
+            "mediaType": "image/jpeg",
+            "data": "BBBB"
+          }
+        }
+      },
+      "condition": "three"
+    }
+  ],
+  "expect": {
+    "backendCalls": 2,
+    "decideMany": [],
+    "decide": [
+      {
+        "questionCount": 2
+      },
+      {
+        "questionCount": 1
+      }
+    ]
+  }
+}

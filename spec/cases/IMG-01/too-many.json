@@ -1,0 +1,52 @@
+{
+  "id": "IMG-01/too-many",
+  "criteria": [
+    "IMG-01"
+  ],
+  "tags": [
+    "deferred"
+  ],
+  "backend": {
+    "limits": {
+      "maxImages": 1
+    }
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "is",
+      "state": {
+        "photos": [
+          {
+            "type": "image",
+            "source": {
+              "kind": "base64",
+              "mediaType": "image/png",
+              "data": "AAAA"
+            }
+          },
+          {
+            "type": "image",
+            "source": {
+              "kind": "base64",
+              "mediaType": "image/jpeg",
+              "data": "BBBB"
+            }
+          }
+        ]
+      },
+      "condition": "is a cat"
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "error": "UNSUPPORTED_INPUT"
+      }
+    ],
+    "errors": [
+      "UNSUPPORTED_INPUT"
+    ],
+    "backendCalls": 0
+  }
+}

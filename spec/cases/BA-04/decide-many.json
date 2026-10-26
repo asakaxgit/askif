@@ -1,0 +1,110 @@
+{
+  "id": "BA-04/decide-many",
+  "criteria": [
+    "BA-04"
+  ],
+  "tags": [
+    "core"
+  ],
+  "backend": {
+    "multiState": true,
+    "hasDecideMany": true
+  },
+  "script": {
+    "decideMany": [
+      {
+        "byKind": {
+          "yesno": {
+            "is animal": 0.8
+          },
+          "choice": {
+            "size?": {
+              "probabilities": {
+                "small": 0.2,
+                "large": 0.8
+              }
+            }
+          },
+          "scale": {
+            "speed?": {
+              "probabilities": [
+                0.25,
+                0.75
+              ]
+            }
+          }
+        }
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "is",
+      "state": "dog",
+      "condition": "is animal"
+    },
+    {
+      "group": 0,
+      "op": "switch",
+      "state": "cat",
+      "question": "size?",
+      "options": [
+        {
+          "key": "small"
+        },
+        {
+          "key": "large"
+        }
+      ]
+    },
+    {
+      "group": 0,
+      "op": "score",
+      "state": "car",
+      "question": "speed?",
+      "levels": [
+        {
+          "key": "low"
+        },
+        {
+          "key": "high"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "value": true
+      },
+      {
+        "choice": "large"
+      },
+      {
+        "level": "high"
+      }
+    ],
+    "backendCalls": 1,
+    "decide": [],
+    "decideMany": [
+      {
+        "itemCount": 3,
+        "items": [
+          {
+            "id": "q0",
+            "state": "dog"
+          },
+          {
+            "id": "q1",
+            "state": "cat"
+          },
+          {
+            "id": "q2",
+            "state": "car"
+          }
+        ]
+      }
+    ]
+  }
+}

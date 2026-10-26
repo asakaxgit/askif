@@ -1,0 +1,54 @@
+{
+  "id": "ER-04/decide-many-throws",
+  "criteria": [
+    "ER-04"
+  ],
+  "tags": [
+    "core"
+  ],
+  "backend": {
+    "multiState": true,
+    "hasDecideMany": true
+  },
+  "script": {
+    "decideMany": [
+      {
+        "throw": true
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "is",
+      "state": "a",
+      "condition": "ok"
+    },
+    {
+      "group": 0,
+      "op": "is",
+      "state": "b",
+      "condition": "ok"
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "error": "BACKEND_FAILED"
+      },
+      {
+        "error": "BACKEND_FAILED"
+      }
+    ],
+    "errors": [
+      "BACKEND_FAILED",
+      "BACKEND_FAILED"
+    ],
+    "backendCalls": 1,
+    "decideMany": [
+      {
+        "itemCount": 2
+      }
+    ]
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "id": "IF-12/criteria-not-inherited",
+  "criteria": [
+    "IF-12"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "yesno",
+            "probability": 0.05
+          },
+          {
+            "kind": "yesno",
+            "probability": 0.95
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "if",
+      "state": "x",
+      "conditions": [
+        {
+          "condition": "A",
+          "criteria": {
+            "true": "yes",
+            "false": "no"
+          }
+        },
+        {
+          "condition": "B"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "backendCalls": 1,
+    "decide": [
+      {
+        "questionCount": 2,
+        "questions": [
+          {
+            "kind": "yesno",
+            "criteria": {
+              "true": "yes",
+              "false": "no"
+            }
+          },
+          {
+            "kind": "yesno",
+            "criteria": null
+          }
+        ]
+      }
+    ]
+  }
+}

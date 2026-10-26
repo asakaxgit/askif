@@ -1,0 +1,81 @@
+{
+  "id": "SW-01/winner",
+  "criteria": [
+    "SW-01"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "choice",
+            "probabilities": {
+              "returns": 0.61,
+              "billing": 0.35,
+              "shipping": 0.04
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "switch",
+      "state": "ticket",
+      "question": "Which team?",
+      "handlers": [
+        "case"
+      ],
+      "options": [
+        {
+          "key": "returns",
+          "description": "Exchanges"
+        },
+        {
+          "key": "shipping",
+          "description": "Delivery"
+        },
+        {
+          "key": "billing",
+          "description": "Charges"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "branch": "case",
+        "choice": "returns",
+        "ranking": [
+          {
+            "key": "returns",
+            "probability": 0.61
+          },
+          {
+            "key": "billing",
+            "probability": 0.35
+          },
+          {
+            "key": "shipping",
+            "probability": 0.04
+          }
+        ]
+      }
+    ],
+    "handlersRun": [
+      [
+        "case"
+      ]
+    ],
+    "errors": [
+      null
+    ],
+    "backendCalls": 1
+  }
+}

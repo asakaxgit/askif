@@ -1,0 +1,58 @@
+{
+  "id": "PR-06/explicit-images",
+  "criteria": [
+    "PR-06"
+  ],
+  "tags": [
+    "deferred"
+  ],
+  "config": {
+    "protection": {
+      "images": "explicit"
+    }
+  },
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "yesno",
+            "probability": 0.9
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "is",
+      "state": {
+        "note": "data:image/png;base64,AAAA"
+      },
+      "condition": "text"
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "value": true
+      }
+    ],
+    "errors": [
+      null
+    ],
+    "backendCalls": 1,
+    "decide": [
+      {
+        "state": {
+          "note": "data:image/png;base64,AAAA"
+        },
+        "context": {
+          "protection": true,
+          "images": "explicit"
+        }
+      }
+    ]
+  }
+}

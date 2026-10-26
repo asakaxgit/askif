@@ -1,0 +1,86 @@
+{
+  "id": "PR-04/configure-restores",
+  "criteria": [
+    "PR-04"
+  ],
+  "tags": [
+    "deferred"
+  ],
+  "config": {
+    "protection": false
+  },
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "yesno",
+            "probability": 0.9
+          }
+        ]
+      },
+      {
+        "answers": [
+          {
+            "kind": "yesno",
+            "probability": 0.9
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "is",
+      "state": "a​b",
+      "condition": "kept"
+    },
+    {
+      "group": 1,
+      "op": "configure",
+      "configure": {
+        "protection": {
+          "stripHidden": true
+        }
+      }
+    },
+    {
+      "group": 2,
+      "op": "is",
+      "state": "a​b",
+      "condition": "cleaned"
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "value": true
+      },
+      {
+        "value": true
+      }
+    ],
+    "errors": [
+      null,
+      null
+    ],
+    "backendCalls": 2,
+    "decide": [
+      {
+        "state": "a​b",
+        "context": {
+          "protection": false,
+          "images": "auto"
+        }
+      },
+      {
+        "state": "ab",
+        "context": {
+          "protection": true,
+          "images": "auto"
+        }
+      }
+    ]
+  }
+}

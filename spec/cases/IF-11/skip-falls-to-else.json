@@ -1,0 +1,62 @@
+{
+  "id": "IF-11/skip-falls-to-else",
+  "criteria": [
+    "IF-11"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "yesno",
+            "probability": 0.05
+          },
+          {
+            "kind": "yesno",
+            "probability": 0.01
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "if",
+      "state": "x",
+      "unsureMode": "skip",
+      "handlers": [
+        "else",
+        "unsure"
+      ],
+      "conditions": [
+        {
+          "condition": "A"
+        },
+        {
+          "condition": "no"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "branch": "else",
+        "unsureIndexes": []
+      }
+    ],
+    "handlersRun": [
+      [
+        "else"
+      ]
+    ],
+    "errors": [
+      null
+    ],
+    "backendCalls": 1
+  }
+}

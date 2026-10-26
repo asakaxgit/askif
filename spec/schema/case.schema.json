@@ -1,0 +1,302 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/asakaxgit/askif/spec/schema/case.schema.json",
+  "title": "askif conformance case",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "criteria", "tags", "calls", "expect"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^[A-Z]+-[0-9]+/[a-z0-9-]+$" },
+    "criteria": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[A-Z]+-[0-9]+$" }
+    },
+    "tags": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "enum": ["core", "adapter", "ts-only", "deferred"] }
+    },
+    "epsilon": { "type": "number", "exclusiveMinimum": 0 },
+    "config": { "$ref": "#/$defs/config" },
+    "backend": { "$ref": "#/$defs/backend" },
+    "script": { "$ref": "#/$defs/script" },
+    "calls": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/call" } },
+    "expect": { "$ref": "#/$defs/expect" }
+  },
+  "$defs": {
+    "config": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "threshold": { "type": "number" },
+        "unsureBand": { "$ref": "#/$defs/band" },
+        "minConfidence": { "type": "number" },
+        "maxBatchSize": { "type": "integer", "minimum": 1 },
+        "maxStatesPerBatch": { "type": "integer", "minimum": 1 },
+        "protection": { "$ref": "#/$defs/protection" }
+      }
+    },
+    "protection": {
+      "oneOf": [{ "const": false }, { "$ref": "#/$defs/protectionFields" }]
+    },
+    "protectionFields": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "stripHidden": { "type": "boolean" },
+        "stripHtmlComments": { "type": "boolean" },
+        "maxStateChars": { "type": "number", "minimum": 0 },
+        "maxStringChars": { "type": "number", "minimum": 0 },
+        "images": { "enum": ["auto", "explicit"] },
+        "unsureOnInjection": { "type": "boolean" }
+      }
+    },
+    "band": {
+      "type": "array",
+      "prefixItems": [{ "type": "number" }, { "type": "number" }],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "backend": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "multiState": { "type": "boolean" },
+        "hasDecideMany": { "type": "boolean" },
+        "limits": { "$ref": "#/$defs/limits" }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maxImages": { "type": "integer", "minimum": 0 },
+        "maxOptions": { "type": "integer", "minimum": 0 },
+        "maxLevels": { "type": "integer", "minimum": 0 },
+        "maxQuestionsPerCall": { "type": "integer", "minimum": 0 },
+        "maxStatesPerCall": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "script": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "decide": { "type": "array", "items": { "$ref": "#/$defs/step" } },
+        "decideMany": { "type": "array", "items": { "$ref": "#/$defs/step" } },
+        "override": { "$ref": "#/$defs/scriptSide" }
+      }
+    },
+    "scriptSide": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "decide": { "type": "array", "items": { "$ref": "#/$defs/step" } },
+        "decideMany": { "type": "array", "items": { "$ref": "#/$defs/step" } }
+      }
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "throw": { "type": "boolean" },
+        "byKind": { "$ref": "#/$defs/byKind" },
+        "answers": {
+          "oneOf": [
+            { "type": "array", "items": { "$ref": "#/$defs/answer" } },
+            { "$ref": "#/$defs/eachAnswers" }
+          ]
+        }
+      }
+    },
+    "eachAnswers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["each"],
+      "properties": { "each": { "$ref": "#/$defs/answer" } }
+    },
+    "byKind": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "yesno": { "type": "object", "additionalProperties": { "type": "number" } },
+        "choice": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["probabilities"],
+            "properties": {
+              "probabilities": { "type": "object", "additionalProperties": { "type": "number" } },
+              "confidence": { "type": "number" }
+            }
+          }
+        },
+        "scale": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["probabilities"],
+            "properties": {
+              "probabilities": { "type": "array", "items": { "type": "number" } },
+              "confidence": { "type": "number" }
+            }
+          }
+        }
+      }
+    },
+    "answer": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "enum": ["yesno", "choice", "scale"] },
+        "probability": { "type": "number" },
+        "probabilities": true,
+        "confidence": { "type": "number" },
+        "error": { "$ref": "#/$defs/errorCode" },
+        "throw": { "type": "boolean" }
+      }
+    },
+    "errorCode": {
+      "enum": [
+        "INVALID_QUESTION",
+        "CHAIN_STARTED",
+        "BACKEND_FAILED",
+        "BACKEND_UNAVAILABLE",
+        "UNSUPPORTED_INPUT",
+        "BAD_RESPONSE"
+      ]
+    },
+    "call": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["group", "op"],
+      "properties": {
+        "group": { "type": "integer", "minimum": 0 },
+        "op": {
+          "enum": ["if", "is", "probability", "switch", "score", "configure", "image", "extractImages"]
+        },
+        "state": true,
+        "condition": { "type": "string" },
+        "conditions": { "type": "array", "items": { "$ref": "#/$defs/condition" } },
+        "handlers": {
+          "type": "array",
+          "items": { "enum": ["then", "elseif", "else", "unsure", "case", "other", "level"] }
+        },
+        "unsureMode": { "enum": ["stop", "skip"] },
+        "threshold": { "type": "number" },
+        "unsureBand": { "$ref": "#/$defs/band" },
+        "minConfidence": { "type": "number" },
+        "criteria": { "$ref": "#/$defs/criteria" },
+        "question": true,
+        "options": { "type": "array", "items": { "$ref": "#/$defs/option" } },
+        "levels": { "type": "array", "items": { "$ref": "#/$defs/level" } },
+        "backend": { "enum": ["default", "override"] },
+        "afterStart": { "enum": ["elseif", "else", "unsure", "case", "other", "level"] },
+        "configure": { "$ref": "#/$defs/config" },
+        "count": { "type": "integer", "minimum": 1 },
+        "statePrefix": { "type": "string" },
+        "conditionPrefix": { "type": "string" },
+        "input": { "$ref": "#/$defs/imageInput" },
+        "mediaType": { "type": "string" },
+        "from": { "type": "integer", "minimum": 1 },
+        "protection": { "$ref": "#/$defs/protection" }
+      }
+    },
+    "condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["condition"],
+      "properties": {
+        "condition": { "type": "string" },
+        "threshold": { "type": "number" },
+        "unsureBand": { "$ref": "#/$defs/band" },
+        "criteria": { "$ref": "#/$defs/criteria" }
+      }
+    },
+    "criteria": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "true": true, "false": true }
+    },
+    "option": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key"],
+      "properties": {
+        "key": { "type": "string" },
+        "description": true
+      }
+    },
+    "level": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key"],
+      "properties": {
+        "key": { "type": "string" },
+        "description": true
+      }
+    },
+    "imageInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "bytes": { "type": "array", "items": { "type": "integer", "minimum": 0, "maximum": 255 } },
+        "base64": { "type": "string" },
+        "dataUrl": { "type": "string" }
+      }
+    },
+    "expect": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "results": { "type": "array", "items": true },
+        "handlersRun": {
+          "type": "array",
+          "items": { "type": "array", "items": { "type": "string" } }
+        },
+        "errors": {
+          "type": "array",
+          "items": { "type": ["string", "null"] }
+        },
+        "backendCalls": { "type": "integer", "minimum": 0 },
+        "decide": { "type": "array", "items": { "$ref": "#/$defs/decideExpect" } },
+        "decideMany": { "type": "array", "items": { "$ref": "#/$defs/decideManyExpect" } },
+        "overrideDecide": { "type": "array", "items": { "$ref": "#/$defs/decideExpect" } },
+        "overrideDecideMany": { "type": "array", "items": { "$ref": "#/$defs/decideManyExpect" } }
+      }
+    },
+    "decideExpect": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "state": true,
+        "questionCount": { "type": "integer", "minimum": 0 },
+        "questions": { "type": "array", "items": true },
+        "context": { "$ref": "#/$defs/decisionContext" }
+      }
+    },
+    "decisionContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protection", "images"],
+      "properties": {
+        "protection": { "type": "boolean" },
+        "images": { "enum": ["auto", "explicit"] }
+      }
+    },
+    "decideManyExpect": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "itemCount": { "type": "integer", "minimum": 0 },
+        "items": { "type": "array", "items": true },
+        "context": { "$ref": "#/$defs/decisionContext" }
+      }
+    }
+  }
+}

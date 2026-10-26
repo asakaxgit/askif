@@ -1,0 +1,56 @@
+{
+  "id": "IF-08/one-batch",
+  "criteria": [
+    "IF-08"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "yesno",
+            "probability": 0.05
+          },
+          {
+            "kind": "yesno",
+            "probability": 0.95
+          },
+          {
+            "kind": "yesno",
+            "probability": 0.9
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "if",
+      "state": "x",
+      "conditions": [
+        {
+          "condition": "A"
+        },
+        {
+          "condition": "B"
+        },
+        {
+          "condition": "C"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "backendCalls": 1,
+    "decide": [
+      {
+        "state": "x",
+        "questionCount": 3
+      }
+    ]
+  }
+}

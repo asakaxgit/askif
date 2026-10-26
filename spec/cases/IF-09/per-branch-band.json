@@ -1,0 +1,67 @@
+{
+  "id": "IF-09/per-branch-band",
+  "criteria": [
+    "IF-09"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "yesno",
+            "probability": 0.05
+          },
+          {
+            "kind": "yesno",
+            "probability": 0.6
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "if",
+      "state": "x",
+      "handlers": [
+        "then",
+        "elseif",
+        "unsure"
+      ],
+      "conditions": [
+        {
+          "condition": "A"
+        },
+        {
+          "condition": "borderline",
+          "unsureBand": [
+            0.1,
+            0.5
+          ]
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "branch": "elseif",
+        "index": 1,
+        "probability": 0.6
+      }
+    ],
+    "handlersRun": [
+      [
+        "elseif"
+      ]
+    ],
+    "errors": [
+      null
+    ],
+    "backendCalls": 1
+  }
+}
