@@ -10,6 +10,15 @@ pnpm run build
 
 `pnpm run check` typechecks `live/` and runs `live/exif.test.ts` (the JPEG/Exif fixture builder). It does not call a provider.
 
+JVM core (`kotlin/`, JDK 21 to compile, bytecode 17) and the shared conformance suite:
+
+```sh
+(cd kotlin && ./gradlew test)
+node --import tsx spec/runner/src/run.ts
+```
+
+`./gradlew :conformance:installDist` writes the Kotlin driver the runner launches. Image input and prompt-injection protection are TypeScript-only in spec 0.1. See [`spec/CRITERIA.md`](./spec/CRITERIA.md) and [`kotlin/README.md`](./kotlin/README.md).
+
 Style and release notes are in the [README](./README.md#contributing) and [`RELEASING.md`](./RELEASING.md).
 
 ## Live tests
