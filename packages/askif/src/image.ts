@@ -30,7 +30,8 @@ const toBase64 = (bytes: Uint8Array): string => {
   return btoa(binary);
 };
 
-const DATA_URL = /^data:(image\/[a-z0-9.+-]+);base64,(.*)$/is;
+/** A base64 image data URL. Exported so input protection can leave these bytes untouched. */
+export const DATA_URL = /^data:(image\/[a-z0-9.+-]+);base64,(.*)$/is;
 const STANDARD_BASE64 = /^[A-Za-z0-9+/]*={0,2}$/;
 const MEDIA_TYPE = /^image\/[a-z0-9.+-]+$/i;
 
@@ -84,6 +85,14 @@ export const image = (input: Uint8Array | string, mediaType?: string): Image => 
   return { type: "image", source: { kind: "base64", mediaType: type.toLowerCase(), data } };
 };
 
+/** A `{ content_type, base64 }` pair `extractImages` treats as an image in `"auto"` mode. */
+export const isContentImage = (value: unknown): value is { readonly content_type: string; readonly base64: string } =>
+  isRecord(value) &&
+  Object.keys(value).length === 2 &&
+  typeof value["content_type"] === "string" &&
+  MEDIA_TYPE.test(value["content_type"]) &&
+  typeof value["base64"] === "string";
+
 export type ExtractImagesOptions = {
   /**
    * Number of the first `[image N]` in this state. Default 1.
@@ -91,6 +100,11 @@ export type ExtractImagesOptions = {
    * so `[image N]` is the Nth image in that list. Count a repeated state once.
    */
   readonly from?: number;
+  /**
+   * `"image"` lifts only `image()` values. Data-URL strings and `{ content_type, base64 }`
+   * objects stay text. Omit it for today's behaviour.
+   */
+  readonly only?: "image";
 };
 
 /**
@@ -108,23 +122,17 @@ export const extractImages = (
     images.push({ type: "image", source: { kind: "base64", mediaType: mediaType.toLowerCase(), data } });
     return `[image ${start + images.length - 1}]`;
   };
+  const explicit = options?.only === "image";
   const walk = (value: Json): Json => {
     if (typeof value === "string") {
+      if (explicit) return value;
       const url = DATA_URL.exec(value);
       return url?.[1] !== undefined && url[2] !== undefined ? placeholder(url[1], url[2]) : value;
     }
     if (Array.isArray(value)) return value.map(walk);
     if (value !== null && typeof value === "object") {
       if (isImage(value)) return placeholder(value.source.mediaType, value.source.data);
-      const { content_type: contentType, base64 } = value;
-      if (
-        Object.keys(value).length === 2 &&
-        typeof contentType === "string" &&
-        MEDIA_TYPE.test(contentType) &&
-        typeof base64 === "string"
-      ) {
-        return placeholder(contentType, base64);
-      }
+      if (!explicit && isContentImage(value)) return placeholder(value.content_type, value.base64);
       return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, walk(entry)]));
     }
     return value;

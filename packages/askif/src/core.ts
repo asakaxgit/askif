@@ -1,14 +1,17 @@
 import { isAskError, makeAskError } from "./errors.js";
 import type { AskError } from "./errors.js";
+import { DEFAULT_PROTECTION, effectiveProtection, looksInjected, reduceDescription, reduceState } from "./guard.js";
 import { extractImages } from "./image.js";
 import type {
   Answer,
   Ask,
   AskConfig,
+  AskOptions,
   Backend,
   CallOptions,
   ChoiceAnswer,
   ChoiceQuestion,
+  DecisionContext,
   DecisionOptions,
   Description,
   Handler,
@@ -20,6 +23,7 @@ import type {
   IfResult,
   IfThenResult,
   IfUnsureResult,
+  ProtectionConfig,
   Question,
   QuestionResult,
   Ranked,
@@ -42,7 +46,13 @@ const DEFAULTS = {
   minConfidence: 0.5,
   maxBatchSize: 32,
   maxStatesPerBatch: 16,
+  protection: DEFAULT_PROTECTION,
 } as const satisfies Omit<AskConfig, "backend">;
+
+const injectionFlags = (
+  suspected: boolean,
+): { readonly flags: readonly ["suspected_injection"] } | Record<string, never> =>
+  suspected ? { flags: ["suspected_injection"] as const } : {};
 
 const OTHER_DESCRIPTION = "None of the other options fit";
 
@@ -130,8 +140,15 @@ type Pending = {
   readonly state: State;
   /** Images in `state`. A repeated state contributes this once per request. */
   readonly imageCount: number;
+  readonly context: DecisionContext;
   readonly resolve: (answer: Answer) => void;
   readonly reject: (error: unknown) => void;
+};
+
+type Ticket = {
+  readonly answer: Promise<Answer>;
+  readonly suspected: boolean;
+  readonly routeUnsure: boolean;
 };
 
 type Batch = {
@@ -152,10 +169,13 @@ type ScoreLevel = {
   readonly handler: Handler<ScoreResult<string>> | undefined;
 };
 
-export const createAsk = (
-  init: { readonly backend: Backend } & Partial<Omit<AskConfig, "backend">>,
-): Ask => {
-  let config: AskConfig = { ...DEFAULTS, ...init };
+export const createAsk = (init: { readonly backend: Backend } & AskOptions): Ask => {
+  const { protection: protectionInit, ...rest } = init;
+  let config: AskConfig = {
+    ...DEFAULTS,
+    ...rest,
+    protection: effectiveProtection(DEFAULT_PROTECTION, protectionInit),
+  };
 
   /* ---------------------------- batching ---------------------------- */
 
@@ -201,7 +221,7 @@ export const createAsk = (
   const send = async (backend: Backend, state: State, items: readonly Pending[]): Promise<void> => {
     const questions = Object.fromEntries(items.map((item, i) => [`q${i}`, item.question]));
     try {
-      const answers = await backend.decide(state, questions);
+      const answers = await backend.decide(state, questions, items[0]?.context);
       items.forEach((item, i) => accept(backend, item, answers[`q${i}`]));
     } catch (error) {
       rejectAll(backend, items, error);
@@ -219,7 +239,7 @@ export const createAsk = (
     }
     const payload = items.map((item, i) => ({ id: `q${i}`, state: item.state, question: item.question }));
     try {
-      const results = await decideMany(payload);
+      const results = await decideMany(payload, items[0]?.context);
       const byId = new Map(results.map((result) => [result.id, result]));
       items.forEach((item, i) => {
         const result = byId.get(`q${i}`);
@@ -277,15 +297,25 @@ export const createAsk = (
     queues.clear();
     for (const [backend, byState] of pending) {
       const items = [...byState.values()].flatMap((batch) => batch.items);
+      // A protected call and a `protection: false` call in the same tick must not share a request.
+      const groups = new Map<string, Pending[]>();
+      for (const item of items) {
+        const key = JSON.stringify(item.context);
+        const group = groups.get(key);
+        if (group === undefined) groups.set(key, [item]);
+        else group.push(item);
+      }
       const maxQuestions = questionLimit(backend);
       const maxStates = stateLimit(backend);
       const maxImages = backend.limits?.maxImages ?? 0;
       const many = maxStates > 1 && backend.decideMany !== undefined;
-      for (const chunk of pack(items, maxQuestions, maxStates, maxImages)) {
-        if (many) void sendMany(backend, chunk);
-        else {
-          const first = chunk[0];
-          if (first !== undefined) void send(backend, first.state, chunk);
+      for (const group of groups.values()) {
+        for (const chunk of pack(group, maxQuestions, maxStates, maxImages)) {
+          if (many) void sendMany(backend, chunk);
+          else {
+            const first = chunk[0];
+            if (first !== undefined) void send(backend, first.state, chunk);
+          }
         }
       }
     }
@@ -300,52 +330,130 @@ export const createAsk = (
       : `The ${backend.name} backend accepts at most ${max} images per state, got ${found}.`;
   };
 
-  const enqueue = (backend: Backend, state: State, question: Question): Promise<Answer> =>
-    new Promise((resolve, reject) => {
-      const imageCount = extractImages(state).images.length;
-      const problem = imageProblem(backend, imageCount);
-      if (problem !== undefined) {
-        reject(makeAskError("UNSUPPORTED_INPUT", problem));
-        return;
-      }
-      const byState = queues.get(backend) ?? new Map<string, Batch>();
-      queues.set(backend, byState);
-      const key = JSON.stringify(state);
-      const batch = byState.get(key) ?? { backend, state, items: [] };
-      byState.set(key, batch);
-      batch.items.push({ question, state, imageCount, resolve, reject });
-      if (!flushScheduled) {
-        flushScheduled = true;
-        // Two hops: chains start on the next microtask, so a direct call like
-        // ask.is() made in the same tick must wait for them to join the batch.
-        queueMicrotask(() => queueMicrotask(flush));
+  const enqueue = (backend: Backend, state: State, question: Question, options: CallOptions): Ticket => {
+    let suspected = false;
+    let routeUnsure = false;
+    const answer = new Promise<Answer>((resolve, reject) => {
+      try {
+        const protection = effectiveProtection(config.protection, options.protection);
+        const reduced = protection === false ? state : reduceState(state, protection);
+        const context: DecisionContext = {
+          protection: protection !== false,
+          images: protection === false ? "auto" : protection.images,
+        };
+        suspected = protection !== false && looksInjected(reduced);
+        routeUnsure = protection !== false && protection.unsureOnInjection && suspected;
+        const imageCount = extractImages(reduced, context.images === "explicit" ? { only: "image" } : {}).images.length;
+        const problem = imageProblem(backend, imageCount);
+        if (problem !== undefined) {
+          reject(makeAskError("UNSUPPORTED_INPUT", problem));
+          return;
+        }
+        const byState = queues.get(backend) ?? new Map<string, Batch>();
+        queues.set(backend, byState);
+        const key = JSON.stringify([reduced, context]);
+        const batch = byState.get(key) ?? { backend, state: reduced, items: [] };
+        byState.set(key, batch);
+        batch.items.push({ question, state: reduced, imageCount, context, resolve, reject });
+        if (!flushScheduled) {
+          flushScheduled = true;
+          // Two hops: chains start on the next microtask, so a direct call like
+          // ask.is() made in the same tick must wait for them to join the batch.
+          queueMicrotask(() => queueMicrotask(flush));
+        }
+      } catch (error) {
+        reject(error);
       }
     });
+    return { answer, suspected, routeUnsure };
+  };
+
+  const cleanDescription = (value: Description, protection: ProtectionConfig | false): Description =>
+    protection === false ? value : reduceDescription(value, protection);
+
+  const protectionOf = (options: CallOptions): ProtectionConfig | false =>
+    effectiveProtection(config.protection, options.protection);
 
   const backendOf = (options: CallOptions): Backend => options.backend ?? config.backend;
 
-  const askYesNo = async (backend: Backend, state: State, question: YesNoQuestion): Promise<YesNoAnswer> => {
-    const answer = await enqueue(backend, state, question);
+  const askYesNo = async (
+    backend: Backend,
+    state: State,
+    question: YesNoQuestion,
+    options: CallOptions,
+  ): Promise<{ readonly answer: YesNoAnswer; readonly suspected: boolean; readonly routeUnsure: boolean }> => {
+    const protection = protectionOf(options);
+    const { criteria } = question;
+    const cleaned: YesNoQuestion =
+      protection === false
+        ? question
+        : {
+            kind: "yesno",
+            instructions: cleanDescription(question.instructions, protection),
+            ...(criteria === undefined
+              ? {}
+              : {
+                  criteria: {
+                    ...(criteria.true === undefined ? {} : { true: cleanDescription(criteria.true, protection) }),
+                    ...(criteria.false === undefined ? {} : { false: cleanDescription(criteria.false, protection) }),
+                  },
+                }),
+          };
+    const ticket = enqueue(backend, state, cleaned, options);
+    const answer = await ticket.answer;
     if (answer.kind !== "yesno") throw makeAskError("BAD_RESPONSE", "Expected a yes/no answer.");
-    return answer;
+    return { answer, suspected: ticket.suspected, routeUnsure: ticket.routeUnsure };
   };
 
-  const askChoice = async (backend: Backend, state: State, question: ChoiceQuestion): Promise<ChoiceAnswer> => {
-    const answer = await enqueue(backend, state, question);
+  const askChoice = async (
+    backend: Backend,
+    state: State,
+    question: ChoiceQuestion,
+    options: CallOptions,
+  ): Promise<{ readonly answer: ChoiceAnswer; readonly suspected: boolean; readonly routeUnsure: boolean }> => {
+    const protection = protectionOf(options);
+    const cleaned: ChoiceQuestion =
+      protection === false
+        ? question
+        : {
+            kind: "choice",
+            instructions: cleanDescription(question.instructions, protection),
+            options: question.options.map((option) => ({
+              key: option.key,
+              description: cleanDescription(option.description, protection),
+            })),
+          };
+    const ticket = enqueue(backend, state, cleaned, options);
+    const answer = await ticket.answer;
     if (answer.kind !== "choice") throw makeAskError("BAD_RESPONSE", "Expected a choice answer.");
-    return answer;
+    return { answer, suspected: ticket.suspected, routeUnsure: ticket.routeUnsure };
   };
 
-  const askScale = async (backend: Backend, state: State, question: ScaleQuestion): Promise<ScaleAnswer> => {
-    const answer = await enqueue(backend, state, question);
+  const askScale = async (
+    backend: Backend,
+    state: State,
+    question: ScaleQuestion,
+    options: CallOptions,
+  ): Promise<{ readonly answer: ScaleAnswer; readonly suspected: boolean; readonly routeUnsure: boolean }> => {
+    const protection = protectionOf(options);
+    const cleaned: ScaleQuestion =
+      protection === false
+        ? question
+        : {
+            kind: "scale",
+            instructions: cleanDescription(question.instructions, protection),
+            levels: question.levels.map((level) => cleanDescription(level, protection)),
+          };
+    const ticket = enqueue(backend, state, cleaned, options);
+    const answer = await ticket.answer;
     if (answer.kind !== "scale") throw makeAskError("BAD_RESPONSE", "Expected a scale answer.");
-    if (answer.probabilities.length !== question.levels.length) {
+    if (answer.probabilities.length !== cleaned.levels.length) {
       throw makeAskError(
         "BAD_RESPONSE",
-        `Expected ${question.levels.length} level probabilities, got ${answer.probabilities.length}.`,
+        `Expected ${cleaned.levels.length} level probabilities, got ${answer.probabilities.length}.`,
       );
     }
-    return answer;
+    return { answer, suspected: ticket.suspected, routeUnsure: ticket.routeUnsure };
   };
 
   /* ----------------------------- yes/no ----------------------------- */
@@ -357,8 +465,17 @@ export const createAsk = (
     ...(criteria === undefined ? {} : { criteria }),
   });
 
+  const measure = async (
+    state: State,
+    condition: string,
+    options: IfOptions = {},
+  ): Promise<{ readonly probability: number; readonly suspected: boolean; readonly routeUnsure: boolean }> => {
+    const result = await askYesNo(backendOf(options), state, yesNoQuestion(condition, options.criteria), options);
+    return { probability: result.answer.probability, suspected: result.suspected, routeUnsure: result.routeUnsure };
+  };
+
   const probability = async (state: State, condition: string, options: IfOptions = {}): Promise<number> =>
-    (await askYesNo(backendOf(options), state, yesNoQuestion(condition, options.criteria))).probability;
+    (await measure(state, condition, options)).probability;
 
   const is = async (state: State, condition: string, options: IfOptions = {}): Promise<boolean> =>
     (await probability(state, condition, options)) > (options.threshold ?? config.threshold);
@@ -378,7 +495,8 @@ export const createAsk = (
     let unsureHandler: Handler<IfUnsureResult> | undefined;
     let unsureMode: NonNullable<UnsureOptions["mode"]> = "stop";
 
-    const judge = (p: number, o: IfOptions): "then" | "else" | "unsure" => {
+    const judge = (p: number, o: IfOptions, steer: boolean): "then" | "else" | "unsure" => {
+      if (unsureHandler !== undefined && steer) return "unsure";
       if (unsureHandler !== undefined) {
         const [low, high] = o.unsureBand ?? config.unsureBand;
         if (p > high) return "then";
@@ -390,11 +508,11 @@ export const createAsk = (
 
     const runner = makeRunner(async (): Promise<IfResult> => {
       // Asked together, so they share one batch; later branches are discarded if an earlier one wins.
-      const probabilities = await Promise.all(
-        conditions.map((c) => probability(state, c.condition, c.options)),
-      );
+      const outcomes = await Promise.all(conditions.map((c) => measure(state, c.condition, c.options)));
+      const probabilities = outcomes.map((outcome) => outcome.probability);
+      const suspected = outcomes.some((outcome) => outcome.suspected);
       const unsureIndexes: number[] = [];
-      const base = { probabilities, unsureIndexes };
+      const base = { probabilities, unsureIndexes, ...injectionFlags(suspected) };
 
       const unsureAt = async (index: number): Promise<IfResult> => {
         const result: IfUnsureResult = {
@@ -409,7 +527,7 @@ export const createAsk = (
       };
 
       for (const [i, c] of conditions.entries()) {
-        const verdict = judge(probabilities[i] ?? 0, c.options);
+        const verdict = judge(probabilities[i] ?? 0, c.options, outcomes[i]?.routeUnsure === true);
         if (verdict === "unsure") {
           unsureIndexes.push(i);
           if (unsureMode === "stop") return unsureAt(i);
@@ -469,11 +587,16 @@ export const createAsk = (
     const runner = makeRunner(async (): Promise<SwitchResult<string>> => {
       const backend = backendOf(options);
       checkCount("options", cases.length, backend.limits?.maxOptions);
-      const answer = await askChoice(backend, state, {
-        kind: "choice",
-        instructions: question,
-        options: cases.map(({ key, description }) => ({ key, description })),
-      });
+      const { answer, suspected, routeUnsure } = await askChoice(
+        backend,
+        state,
+        {
+          kind: "choice",
+          instructions: question,
+          options: cases.map(({ key, description }) => ({ key, description })),
+        },
+        options,
+      );
 
       const ranking: Ranked<string>[] = cases
         .map(({ key }) => ({ key, probability: answer.probabilities[key] ?? 0 }))
@@ -483,12 +606,14 @@ export const createAsk = (
 
       const confidence = answer.confidence ?? confidenceOf(ranking.map((r) => r.probability));
       const unsure =
-        unsureHandler !== undefined && confidence < (options.minConfidence ?? config.minConfidence);
+        unsureHandler !== undefined &&
+        (routeUnsure || confidence < (options.minConfidence ?? config.minConfidence));
       const result = {
         branch: unsure ? "unsure" : "case",
         choice: top.key,
         confidence,
         ranking,
+        ...injectionFlags(suspected),
       } satisfies SwitchResult<string>;
 
       const handler = unsure ? unsureHandler : cases.find((c) => c.key === top.key)?.handler;
@@ -565,11 +690,16 @@ export const createAsk = (
     const runner = makeRunner(async (): Promise<ScoreResult<string>> => {
       const backend = backendOf(options);
       checkCount("levels", levels.length, backend.limits?.maxLevels);
-      const answer = await askScale(backend, state, {
-        kind: "scale",
-        instructions: question,
-        levels: levels.map((l) => l.description),
-      });
+      const { answer, suspected, routeUnsure } = await askScale(
+        backend,
+        state,
+        {
+          kind: "scale",
+          instructions: question,
+          levels: levels.map((l) => l.description),
+        },
+        options,
+      );
 
       const { probabilities } = answer;
       // Most likely level, not the rounded score: a 50/50 split between the two
@@ -581,7 +711,8 @@ export const createAsk = (
       const score = probabilities.reduce((sum, p, i) => sum + p * i, 0);
       const confidence = answer.confidence ?? confidenceOf(probabilities);
       const unsure =
-        unsureHandler !== undefined && confidence < (options.minConfidence ?? config.minConfidence);
+        unsureHandler !== undefined &&
+        (routeUnsure || confidence < (options.minConfidence ?? config.minConfidence));
       const result = {
         branch: unsure ? "unsure" : "level",
         level: top.key,
@@ -590,6 +721,7 @@ export const createAsk = (
         normalized: score / (levels.length - 1),
         confidence,
         probabilities,
+        ...injectionFlags(suspected),
       } satisfies ScoreResult<string>;
 
       await (unsure ? unsureHandler : top.handler)?.(result);
@@ -645,7 +777,12 @@ export const createAsk = (
     is,
     probability,
     configure: (partial) => {
-      config = { ...config, ...partial };
+      const { protection, ...rest } = partial;
+      config = {
+        ...config,
+        ...rest,
+        ...(protection === undefined ? {} : { protection: effectiveProtection(config.protection, protection) }),
+      };
     },
   };
 };

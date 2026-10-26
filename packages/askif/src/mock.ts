@@ -1,8 +1,23 @@
-import type { Answer, Backend, BackendLimits, DecisionItem, ItemResult, Question, State } from "./types.js";
+import type {
+  Answer,
+  Backend,
+  BackendLimits,
+  DecisionContext,
+  DecisionItem,
+  ItemResult,
+  Question,
+  State,
+} from "./types.js";
 
 export type MockCall = {
   readonly state: State;
   readonly questions: Readonly<Record<string, Question>>;
+  readonly context?: DecisionContext;
+};
+
+export type MockManyCall = {
+  readonly items: readonly DecisionItem[];
+  readonly context?: DecisionContext;
 };
 
 export type MockOptions = {
@@ -15,6 +30,8 @@ export type MockBackend = Backend & {
   readonly calls: readonly MockCall[];
   /** Every `decideMany` call, oldest first. Stays empty when `multiState` is off. */
   readonly manyCalls: readonly (readonly DecisionItem[])[];
+  /** `context` for each `decideMany` call, in the same order as `manyCalls`. */
+  readonly manyContexts: readonly (DecisionContext | undefined)[];
 };
 
 /**
@@ -32,8 +49,13 @@ export const mock = (
 ): MockBackend => {
   const calls: MockCall[] = [];
   const manyCalls: DecisionItem[][] = [];
-  const decideMany = async (items: readonly DecisionItem[]): Promise<readonly ItemResult[]> => {
+  const manyContexts: (DecisionContext | undefined)[] = [];
+  const decideMany = async (
+    items: readonly DecisionItem[],
+    context?: DecisionContext,
+  ): Promise<readonly ItemResult[]> => {
     manyCalls.push([...items]);
+    manyContexts.push(context);
     return Promise.all(
       items.map(async (item): Promise<ItemResult> => {
         try {
@@ -48,10 +70,11 @@ export const mock = (
     name: "mock",
     calls,
     manyCalls,
+    manyContexts,
     ...(limits === undefined ? {} : { limits }),
     ...(options?.multiState === true ? { multiState: true as const, decideMany } : {}),
-    decide: async (state, questions) => {
-      calls.push({ state, questions });
+    decide: async (state, questions, context) => {
+      calls.push({ state, questions, ...(context === undefined ? {} : { context }) });
       const entries = await Promise.all(
         Object.entries(questions).map(async ([id, q]) => [id, await answer(q, state)] as const),
       );

@@ -11,6 +11,7 @@ All of these run against the built-in [`mock`](../../../README.md#backends) back
 | [`configuration.ts`](./configuration.ts) | `ask.configure`, per-call overrides, and a separate stricter instance |
 | [`backends.ts`](./backends.ts) | Building a custom backend with `mock` |
 | [`errors.ts`](./errors.ts) | Catching an `AskError` and checking its `code` |
+| [`security.ts`](./security.ts) | Default prompt-injection protection: `.unsure()` holds a steered state, and the flag is set either way |
 
 ```sh
 npx tsx examples/if.ts

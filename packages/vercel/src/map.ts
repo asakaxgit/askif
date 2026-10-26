@@ -65,34 +65,44 @@ const toInput = (value: Json): Input | null => {
   return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, toValue(entry)]));
 };
 
-const take = (value: Json, found: Image[], allowImages: boolean, imagesOff: string): Json => {
-  const { state, images } = extractImages(value, { from: found.length + 1 });
+const imageOptions = (from: number, explicit: boolean): { readonly from: number; readonly only?: "image" } =>
+  explicit ? { from, only: "image" as const } : { from };
+
+const take = (value: Json, found: Image[], allowImages: boolean, imagesOff: string, explicit: boolean): Json => {
+  const { state, images } = extractImages(value, imageOptions(found.length + 1, explicit));
   if (images.length > 0 && !allowImages) throw makeAskError("UNSUPPORTED_INPUT", imagesOff);
   found.push(...images);
   return state;
 };
 
-const encode = (value: Json, found: Image[], allowImages: boolean, imagesOff: string): Input | null =>
-  toInput(take(value, found, allowImages, imagesOff));
+const encode = (value: Json, found: Image[], allowImages: boolean, imagesOff: string, explicit: boolean): Input | null =>
+  toInput(take(value, found, allowImages, imagesOff, explicit));
 
 const yesNoCriteria = (
   criteria: { readonly true?: Json; readonly false?: Json } | undefined,
   found: Image[],
   allowImages: boolean,
   imagesOff: string,
+  explicit: boolean,
 ): { readonly true?: Input | null; readonly false?: Input | null } | undefined => {
   if (criteria === undefined) return undefined;
   const encoded: { true?: Input | null; false?: Input | null } = {};
-  if (criteria.true !== undefined) encoded.true = encode(criteria.true, found, allowImages, imagesOff);
-  if (criteria.false !== undefined) encoded.false = encode(criteria.false, found, allowImages, imagesOff);
+  if (criteria.true !== undefined) encoded.true = encode(criteria.true, found, allowImages, imagesOff, explicit);
+  if (criteria.false !== undefined) encoded.false = encode(criteria.false, found, allowImages, imagesOff, explicit);
   return encoded.true === undefined && encoded.false === undefined ? undefined : encoded;
 };
 
-const toQuestion = (question: Question, found: Image[], allowImages: boolean, imagesOff: string): GatewayQuestion => {
-  const instructions = encode(question.instructions, found, allowImages, imagesOff);
+const toQuestion = (
+  question: Question,
+  found: Image[],
+  allowImages: boolean,
+  imagesOff: string,
+  explicit: boolean,
+): GatewayQuestion => {
+  const instructions = encode(question.instructions, found, allowImages, imagesOff, explicit);
   switch (question.kind) {
     case "yesno": {
-      const criteria = yesNoCriteria(question.criteria, found, allowImages, imagesOff);
+      const criteria = yesNoCriteria(question.criteria, found, allowImages, imagesOff, explicit);
       return criteria === undefined ? { type: "boolean", instructions } : { type: "boolean", instructions, criteria };
     }
     case "choice":
@@ -100,14 +110,17 @@ const toQuestion = (question: Question, found: Image[], allowImages: boolean, im
         type: "choice",
         instructions,
         criteria: Object.fromEntries(
-          question.options.map((option) => [option.key, encode(option.description, found, allowImages, imagesOff)]),
+          question.options.map((option) => [
+            option.key,
+            encode(option.description, found, allowImages, imagesOff, explicit),
+          ]),
         ),
       };
     case "scale":
       return {
         type: "score",
         instructions,
-        criteria: question.levels.map((level) => encode(level, found, allowImages, imagesOff)),
+        criteria: question.levels.map((level) => encode(level, found, allowImages, imagesOff, explicit)),
       };
     default:
       return question satisfies never;
@@ -125,6 +138,7 @@ const normalizeState = (value: Json): HttpState => {
 /**
  * Pull images out of the state and the questions, then map questions to the Decision API.
  * Image numbering starts at 1 on the state and continues through each question, via `extractImages(..., { from })`.
+ * `explicit` lifts only `image()` values. Omit it, or pass false, for the historical extraction.
  */
 export const prepare = (
   state: Json,
@@ -132,11 +146,15 @@ export const prepare = (
   allowImages: boolean,
   maxImages: number,
   imagesOff: string,
+  explicit = false,
 ): Prepared => {
   const found: Image[] = [];
-  const stripped = normalizeState(take(state, found, allowImages, imagesOff));
+  const stripped = normalizeState(take(state, found, allowImages, imagesOff, explicit));
   const wire = Object.fromEntries(
-    Object.entries(questions).map(([id, question]) => [id, toQuestion(question, found, allowImages, imagesOff)]),
+    Object.entries(questions).map(([id, question]) => [
+      id,
+      toQuestion(question, found, allowImages, imagesOff, explicit),
+    ]),
   );
   if (found.length > maxImages) {
     throw makeAskError(

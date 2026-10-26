@@ -1,5 +1,5 @@
-import { createAsk, makeAskError } from "askif";
-import type { Backend, BackendLimits, Json, Question, QuestionResult } from "askif";
+import { clipUntrusted, createAsk, makeAskError } from "askif";
+import type { Backend, BackendLimits, DecisionContext, Json, Question, QuestionResult } from "askif";
 import { configured, envValue } from "./env.js";
 import { DEFAULT_MAX_IMAGES, prepare } from "./map.js";
 import type { GatewayQuestion, SdkState } from "./map.js";
@@ -125,12 +125,14 @@ const providerOptionsFor = (
 const errorDetail = (body: unknown, text: string): string => {
   if (isRecord(body)) {
     const error = body["error"];
-    if (typeof error === "string" && error !== "") return error;
-    if (isRecord(error) && typeof error["message"] === "string" && error["message"] !== "") return error["message"];
-    if (typeof body["message"] === "string" && body["message"] !== "") return body["message"];
+    if (typeof error === "string" && error !== "") return clipUntrusted(error);
+    if (isRecord(error) && typeof error["message"] === "string" && error["message"] !== "") {
+      return clipUntrusted(error["message"]);
+    }
+    if (typeof body["message"] === "string" && body["message"] !== "") return clipUntrusted(body["message"]);
   }
   const trimmed = text.trim();
-  return trimmed === "" ? "empty response" : trimmed.slice(0, 200);
+  return trimmed === "" ? "empty response" : clipUntrusted(trimmed);
 };
 
 const endpoint = (baseURL: string): string => `${baseURL.replace(/\/+$/, "")}/v1/evaluate`;
@@ -148,7 +150,8 @@ export const vercel = (options: VercelOptions = {}): Backend => {
   return {
     name: "vercel",
     limits: limitsFor(options.limits, undefined),
-    decide: async (state, questions) => post(options, model, baseURL, state, questions),
+    decide: async (state, questions, context?: DecisionContext) =>
+      post(options, model, baseURL, state, questions, context?.images === "explicit"),
   };
 };
 
@@ -158,10 +161,11 @@ const post = async (
   baseURL: string,
   state: Json,
   questions: Readonly<Record<string, Question>>,
+  explicit: boolean,
 ): Promise<Readonly<Record<string, QuestionResult>>> => {
   const apiKey = apiKeyFor(options.apiKey);
   if (apiKey === undefined) throw makeAskError("BACKEND_UNAVAILABLE", KEY_MESSAGE);
-  const prepared = prepare(state, questions, false, 0, HTTP_IMAGES);
+  const prepared = prepare(state, questions, false, 0, HTTP_IMAGES, explicit);
   const signal = signalFor(options.timeout);
   const providerOptions = providerOptionsFor(options.providerOptions, options.fallback);
   const body = {
@@ -227,7 +231,16 @@ export const vercelDecide = (options: VercelDecideOptions = {}): Backend => {
   return {
     name: "vercel",
     limits: limitsFor(options.limits, allowImages ? cap : undefined),
-    decide: (state, questions) => decideWithSdk(options, model, allowImages, allowImages ? cap : 0, state, questions),
+    decide: (state, questions, context?: DecisionContext) =>
+      decideWithSdk(
+        options,
+        model,
+        allowImages,
+        allowImages ? cap : 0,
+        state,
+        questions,
+        context?.images === "explicit",
+      ),
   };
 };
 
@@ -238,9 +251,10 @@ const decideWithSdk = async (
   maxImages: number,
   state: Json,
   questions: Readonly<Record<string, Question>>,
+  explicit: boolean,
 ): Promise<Readonly<Record<string, QuestionResult>>> => {
   requireKey(model, options.apiKey);
-  const prepared = prepare(state, questions, allowImages, maxImages, SDK_IMAGES);
+  const prepared = prepare(state, questions, allowImages, maxImages, SDK_IMAGES, explicit);
   const providerOptions = providerOptionsFor(options.providerOptions, options.fallback);
   const signal = signalFor(options.timeout);
   const input: VercelDecideInput = {

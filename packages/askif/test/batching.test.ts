@@ -404,6 +404,53 @@ test("a state over maxImages is still rejected when the backend packs states", a
   assert.equal(backend.manyCalls.length, 0);
 });
 
+test("states that match after cleaning share one decide", async () => {
+  const backend = mock(() => yes(0.9));
+  const ask = createAsk({ backend });
+  await Promise.all([ask.is("a\u200bb", "same"), ask.is("ab", "same")]);
+  assert.equal(backend.calls.length, 1);
+  assert.equal(backend.calls[0]?.state, "ab");
+  assert.equal(Object.keys(backend.calls[0]?.questions ?? {}).length, 2);
+});
+
+test("a protected call and a protection: false call are not packed together", async () => {
+  const backend = mock(() => yes(0.9), undefined, { multiState: true });
+  const ask = createAsk({ backend });
+  const dirty = "a\u200bb";
+  await Promise.all([ask.is(dirty, "raw", { protection: false }), ask.is(dirty, "clean")]);
+  assert.equal(backend.manyCalls.length, 0);
+  assert.equal(backend.calls.length, 2);
+  assert.deepEqual(
+    backend.calls.map((call) => call.state).sort(),
+    ["ab", dirty].sort(),
+  );
+  assert.deepEqual(
+    backend.calls.map((call) => call.context?.protection).sort(),
+    [false, true],
+  );
+});
+
+test("criteria lose hidden characters and keep HTML comments", async () => {
+  const backend = mock(() => yes(0.9));
+  const ask = createAsk({ backend });
+  await ask.is("order", "refundable", { criteria: { true: "a\u200bb <!-- keep -->" } });
+  const question = backend.calls[0]?.questions["q0"];
+  assert.equal(question?.kind, "yesno");
+  assert.deepEqual(question?.kind === "yesno" ? question.criteria : undefined, { true: "ab <!-- keep -->" });
+});
+
+test("explicit image mode does not count a data URL against a text-only backend", async () => {
+  const backend = mock(() => yes(0.9));
+  const url = "data:image/png;base64,AAAA";
+  const ask = createAsk({ backend, protection: { images: "explicit" } });
+  assert.equal(await ask.is({ note: url }, "text"), true);
+  assert.deepEqual(backend.calls[0]?.state, { note: url });
+  await assert.rejects(
+    () => createAsk({ backend }).is({ note: url }, "text"),
+    (error) => isAskError(error) && error.code === "UNSUPPORTED_INPUT",
+  );
+});
+
 test("a question split does not let the next image state join a call that already holds those images", async () => {
   const backend = mock(() => yes(1), { maxImages: 1 }, { multiState: true });
   const ask = createAsk({ backend, maxBatchSize: 1 });

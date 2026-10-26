@@ -307,3 +307,53 @@ test("images built with image() are sent, and formats Clef can't read are refuse
     (error) => isAskError(error) && error.code === "UNSUPPORTED_INPUT" && /image\/gif/.test(error.message),
   );
 });
+
+test("protection: false keeps the historical Clef body, and errors are clipped", async () => {
+  const raws: string[] = [];
+  const dirty = "a\u200bb";
+  const url = "data:image/png;base64,AAAA";
+  const backend = clef({
+    accountId: "acct",
+    apiToken: "tok",
+    fetch: async (_url, init) => {
+      raws.push(String(init?.body));
+      return envelope({
+        model: "clef",
+        answers: { q0: { type: "noul", noul: 0.5 } },
+        usage: { input_tokens: 1, output_tokens: 0 },
+      });
+    },
+  });
+  await createAsk({ backend, protection: false }).is({ note: dirty, photo: url }, "is odd");
+  assert.equal(
+    raws[0],
+    JSON.stringify({
+      model: "clef",
+      state: { note: dirty, photo: "[image 1]" },
+      images: [{ content_type: "image/png", base64: "AAAA" }],
+      questions: {
+        q0: {
+          type: "noul",
+          instructions: { condition: "is odd", question: "Is `condition` true of the state?" },
+        },
+      },
+    }),
+  );
+
+  raws.length = 0;
+  await createAsk({ backend }).is({ note: dirty, photo: url }, "is odd");
+  const cleaned = JSON.parse(raws[0] ?? "{}");
+  assert.ok(isRecord(cleaned) && isRecord(cleaned["state"]));
+  assert.equal(cleaned["state"]["note"], "ab");
+
+  const failing = clef({
+    accountId: "acct",
+    apiToken: "tok",
+    fetch: async () => new Response(`\u0007${"z".repeat(250)}`, { status: 500 }),
+  });
+  await assert.rejects(
+    () => failing.decide("x", { q: { kind: "yesno", instructions: "ok?" } }),
+    (error: unknown) =>
+      isAskError(error) && error.message === `Clef request failed (HTTP 500): ${"z".repeat(200)}`,
+  );
+});

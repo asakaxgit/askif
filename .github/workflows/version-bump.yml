@@ -57,15 +57,34 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Generate changeset
-        run: pnpm exec tsx .github/scripts/create-changeset.ts "${{ inputs.packages }}" "${{ inputs.bump }}" "${{ inputs.summary }}"
+        id: changeset
+        env:
+          PACKAGES: ${{ inputs.packages }}
+          BUMP: ${{ inputs.bump }}
+          SUMMARY: ${{ inputs.summary }}
+        run: |
+          pnpm exec tsx .github/scripts/create-changeset.ts "$PACKAGES" "$BUMP" "$SUMMARY"
+          {
+            echo "packages<<EOF"
+            echo "$PACKAGES"
+            echo "EOF"
+            echo "bump<<EOF"
+            echo "$BUMP"
+            echo "EOF"
+            echo "summary<<EOF"
+            echo "$SUMMARY"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Open a PR with the changeset
         uses: peter-evans/create-pull-request@v7
         with:
-          commit-message: "chore: ${{ inputs.bump }} version bump (${{ inputs.packages }}) — ${{ inputs.summary }}"
-          title: "chore: ${{ inputs.bump }} version bump (${{ inputs.packages }}) — ${{ inputs.summary }}"
+          commit-message: "chore: ${{ steps.changeset.outputs.bump }} version bump (${{ steps.changeset.outputs.packages }}) — ${{ steps.changeset.outputs.summary }}"
+          title: "chore: ${{ steps.changeset.outputs.bump }} version bump (${{ steps.changeset.outputs.packages }}) — ${{ steps.changeset.outputs.summary }}"
           body: |
-            Adds a changeset for a **${{ inputs.bump }}** bump of **${{ inputs.packages }}**.
+            Adds a changeset for a **${{ steps.changeset.outputs.bump }}** bump of **${{ steps.changeset.outputs.packages }}**.
+
+            ${{ steps.changeset.outputs.summary }}
 
             Merging this doesn't publish anything by itself — it makes `release.yml` open or
             update the "Version Packages" PR with the actual version bumps and changelog

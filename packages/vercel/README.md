@@ -98,7 +98,9 @@ Questions about one state go out as one request. Questions about different state
 
 The default model `typesafe-ai/jev` accepts text and JSON only. Gateway forwards image files to the routed model, and that model has to support them. Leave `images` off unless you select one that does. Image quality and which media types each model accepts have not been checked live.
 
-`image()`, a `data:image/...;base64,` string, or `{ content_type, base64 }` can sit in the state, the instructions, or the criteria. Each becomes `[image N]`, numbered from 1 across the state and then the questions.
+`image()`, a `data:image/...;base64,` string, or `{ content_type, base64 }` can sit in the state, the instructions, or the criteria. Each becomes `[image N]`, numbered from 1 across the state and then the questions. That is `images: "auto"`. `images: "explicit"` lifts only `image()` values, so a data URL stays text and the HTTP backend accepts it. Real images are still rejected by `vercel()`.
+
+askif protection applies here too: hidden characters and HTML comments are removed from the state before `POST /v1/evaluate` and before `vercelDecide()`. `protection: false` sends the same HTTP JSON, and the same `vercelDecide()` input, as a build without that cleaning. Provider error text echoed into an `AskError` is stripped of hidden characters and capped at 200 characters.
 
 ## Fallbacks and `.unsure()`
 
