@@ -50,17 +50,23 @@ export default {
 
 ## Images
 
-Clef can read up to 4 images (PNG, JPEG or WebP; 4 MiB each, 8 MiB total; no remote URLs). askif's state is plain JSON, so put images in the state and this backend moves them out: any base64 image data URL, or any `{ content_type, base64 }` object, anywhere in the state.
+Clef can read up to 4 images (PNG, JPEG or WebP; 4 MiB each, 8 MiB total; no remote URLs). Put them in the state with `image()` from `askif`:
 
 ```ts
+import { image } from "askif";
+
 await ask.if(
-  { photo: `data:image/png;base64,${base64}`, note: "customer upload" },
+  { photo: image(bytes), note: "customer upload" },
   "shows a damaged parcel",
   () => openClaim(),
 );
 ```
 
-The question and the rest of the state see an `[image 1]` placeholder where each image was (numbered in the order Clef receives them), so you can refer to "image 1" in your question. More than 4 images fails before any request is sent.
+Try one of your own photos with `node --env-file=../../.env.local --import tsx examples/try-image.ts photo.jpg "shows a damaged parcel"`. It prints the probability of yes.
+
+**Known issue:** an image can be refused with `HTTP 413 ... estimated number of input and maximum output tokens (...) exceeded this model context window limit (65536)` even when it is small. It happened with a 720x565 JPEG that carried EXIF metadata and 250 DPI (Cloudflare estimated 152,996 tokens); the same picture downscaled to 480 px and re-encoded was accepted and cost a normal number of tokens. The cause was not isolated. If you hit it, downscale and re-encode the image (which also drops metadata).
+
+A base64 `data:image/...` string or a `{ content_type, base64 }` object anywhere in the state is picked up too. Each image becomes an `[image 1]`, `[image 2]` placeholder in the state, numbered in the order Clef receives them, so your question can refer to "image 1". More than 4 images, or a format other than PNG/JPEG/WebP, fails with `UNSUPPORTED_INPUT` before any request is sent.
 
 ## Cost and latency
 
