@@ -36,6 +36,17 @@ const STANDARD_BASE64 = /^[A-Za-z0-9+/]*={0,2}$/;
 const MEDIA_TYPE = /^image\/[a-z0-9.+-]+$/i;
 
 /**
+ * True when `value` is an image data URL whose payload is standard base64.
+ * Protection uses this before it skips cleaning and the size caps.
+ */
+export const isStandardImageDataUrl = (value: string): boolean => {
+  const match = DATA_URL.exec(value);
+  const media = match?.[1];
+  const payload = match?.[2];
+  return media !== undefined && payload !== undefined && MEDIA_TYPE.test(media) && STANDARD_BASE64.test(payload);
+};
+
+/**
  * Standard base64 with padding, or undefined.
  * Accepts base64url (`-`/`_`, padding optional): sniffing already did, validation did not.
  */

@@ -383,7 +383,11 @@ Untrusted state is cleaned before it is sent. Hidden characters (zero-width, bid
 
 OpenAI wraps the state in a random `<state-…>` tag and tells the model that tag is the only state. A state that looks like it is trying to rewrite the question is flagged `suspected_injection`. If you attached `.unsure()`, that call takes the unsure branch. Without `.unsure()`, the probability still decides, and the flag is still set.
 
-This is on by default. `protection: false` on `createAsk`, `configure`, or one call sends the previous request body. A partial `protection` object merges over the defaults, so it turns protection back on when the instance had it off. `images: "explicit"` lifts only `image()` values; data URLs stay text. The default is still `"auto"`.
+This is on by default. `protection: false` on `createAsk`, `configure`, or one call sends the previous request body. A partial `protection` object merges over the defaults, so it turns protection back on when the instance had it off. `images: "explicit"` lifts only `image()` values; data URLs stay text. The default is still `"auto"`. In `"auto"`, a `data:image/...;base64,` string is left as an image only when the payload is standard base64 and within the string cap (or the state cap, when the string cap is off).
+
+`suspected_injection` is best-effort. The check is easy to evade: a homoglyph (`ignоre` with a Cyrillic о), a rephrase such as "Disregard what came before", or a heading like `### System` is not flagged. Put untrusted text in the state and trusted instructions in the question, in separate fields.
+
+`ask.if`, `ask.switch`, and `ask.score` return the flag. `ask.is` and `ask.probability` return only a boolean or a number, so they can stay in an `if` or a strict equality check. Use `ask.if` when the flag should change what you do.
 
 ```ts
 // packages/askif/examples/security.ts#L8-L23

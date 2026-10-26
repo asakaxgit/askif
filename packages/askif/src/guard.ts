@@ -1,5 +1,5 @@
 import { makeAskError } from "./errors.js";
-import { DATA_URL, extractImages, isContentImage, isImage } from "./image.js";
+import { DATA_URL, extractImages, isContentImage, isImage, isStandardImageDataUrl } from "./image.js";
 import type { Description, Json, ProtectionConfig, ProtectionOverride, State } from "./types.js";
 
 /**
@@ -107,10 +107,24 @@ export const clipUntrusted = (text: string, max = 200): string => {
   return stripped.slice(0, Math.max(0, end));
 };
 
-const keepImageString = (value: string, p: ProtectionConfig): boolean => p.images === "auto" && DATA_URL.test(value);
+/** A data URL may skip the string cap only up to the next finite cap, so it cannot grow without bound. */
+const imageStringCap = (p: ProtectionConfig): number => {
+  if (Number.isFinite(p.maxStringChars)) return p.maxStringChars;
+  if (Number.isFinite(p.maxStateChars)) return p.maxStateChars;
+  return Infinity;
+};
+
+const keepImageString = (value: string, p: ProtectionConfig): boolean =>
+  p.images === "auto" && value.length <= imageStringCap(p) && isStandardImageDataUrl(value);
 
 const walkState = (value: Json, p: ProtectionConfig): Json => {
-  if (typeof value === "string") return keepImageString(value, p) ? value : sanitizeText(value, p);
+  if (typeof value === "string") {
+    if (keepImageString(value, p)) return value;
+    const cleaned = sanitizeText(value, p);
+    // A refused data URL must stay text. Otherwise extractImages lifts it and the state cap ignores it.
+    if (p.images === "auto" && DATA_URL.test(cleaned)) return cleaned.replace(/^data:/i, "data :");
+    return cleaned;
+  }
   if (typeof value !== "object" || value === null) return value;
   if (Array.isArray(value)) return value.map((entry) => walkState(entry, p));
   if (isImage(value) || (p.images === "auto" && isContentImage(value))) return value;
@@ -144,11 +158,14 @@ const walkDescription = (value: Description): Description => {
 export const reduceDescription = (description: Description, p: ProtectionConfig | false): Description =>
   p === false || !p.stripHidden ? description : walkDescription(description);
 
-/** Known injection markers, matched case-insensitively on the reduced state's text. */
+/**
+ * Known injection markers, matched case-insensitively on the reduced state's text.
+ * Repeats are bounded and do not cross newlines, so a long run of spaces or newlines stays linear.
+ */
 export const INJECTION_MARKERS: readonly RegExp[] = [
   /\b(ignore|disregard|forget|override)\b[^.\n]{0,40}\b(previous|prior|above|earlier|all|the)\b[^.\n]{0,20}\b(instructions?|rules?|prompts?|questions?)\b/i,
-  /<\s*\/?\s*(state|system|assistant|user|developer|instructions?)\b[^>]*>/i,
-  /^\s*(system|assistant|developer)\s*:/im,
+  /<[^\S\n]{0,20}\/?[^\S\n]{0,20}(state|system|assistant|user|developer|instructions?)\b[^>\n]{0,200}>/i,
+  /^[^\S\n]{0,20}(system|assistant|developer)[^\S\n]{0,20}:/im,
   /\b(answer|respond|output|return|reply)\b[^.\n]{0,30}\b(probability|yes|no|1(\.0)?|100\s*%)\b[^.\n]{0,15}$/im,
   /\b(you are now|new instructions|jailbreak|prompt injection)\b/i,
 ];

@@ -334,14 +334,32 @@ export const jev = (options: JevOptions = {}): Backend => {
     return items.map((item) => toItemResult(item.id, results[item.id]));
   };
 
+  // One check per distinct state. `suspected` from askif is reused; a missing flag is scanned once.
+  const injectedStateKeys = (items: readonly DecisionItem[]): Set<string> => {
+    const marked = new Set<string>();
+    const unscanned = new Map<string, DecisionItem["state"]>();
+    for (const item of items) {
+      const key = JSON.stringify(item.state);
+      if (item.suspected === true) {
+        marked.add(key);
+        unscanned.delete(key);
+        continue;
+      }
+      if (item.suspected === undefined && !marked.has(key) && !unscanned.has(key)) unscanned.set(key, item.state);
+    }
+    for (const [key, state] of unscanned) {
+      if (looksInjected(state)) marked.add(key);
+    }
+    return marked;
+  };
+
   const decideMany = async (items: readonly DecisionItem[], context?: DecisionContext): Promise<readonly ItemResult[]> => {
     const explicit = context?.images === "explicit";
     const protect = protectPrompts && context?.protection !== false;
     // One state's text must not steer the answer about another. Send a steered state on its own.
-    if (!protect || !items.some((item) => looksInjected(item.state))) return packItems(items, explicit, protect);
-    const injected = new Set(
-      items.filter((item) => looksInjected(item.state)).map((item) => JSON.stringify(item.state)),
-    );
+    if (!protect) return packItems(items, explicit, protect);
+    const injected = injectedStateKeys(items);
+    if (injected.size === 0) return packItems(items, explicit, protect);
     const alone: DecisionItem[] = [];
     const rest: DecisionItem[] = [];
     for (const item of items) {

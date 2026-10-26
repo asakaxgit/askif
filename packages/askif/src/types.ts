@@ -139,6 +139,12 @@ export type DecisionItem = {
   readonly id: string;
   readonly state: State;
   readonly question: Question;
+  /**
+   * Askif's injection scan for `state`, when it already ran.
+   * A backend reuses this instead of scanning again. Omitted means the backend scans once itself.
+   * Not sent to the model.
+   */
+  readonly suspected?: boolean;
 };
 
 /** One item's outcome from `decideMany`. */
@@ -391,9 +397,19 @@ export type Ask = {
     question: Description,
     options?: DecisionOptions,
   ) => ScoreChain<readonly []>;
-  /** `if (await ask.is(state, condition)) { ... }` */
+  /**
+   * `if (await ask.is(state, condition)) { ... }`
+   *
+   * Only the boolean. `suspected_injection` is not on this result; read it from `ask.if`.
+   * The flag is best-effort.
+   */
   readonly is: (state: State, condition: string, options?: IfOptions) => Promise<boolean>;
-  /** Probability (0 to 1) that `condition` holds for `state`. */
+  /**
+   * Probability (0 to 1) that `condition` holds for `state`.
+   *
+   * Only the number. `suspected_injection` is not on this result; read it from `ask.if`.
+   * The flag is best-effort.
+   */
   readonly probability: (state: State, condition: string, options?: IfOptions) => Promise<number>;
   /** Change defaults for this instance. */
   readonly configure: (config: AskOptions) => void;
