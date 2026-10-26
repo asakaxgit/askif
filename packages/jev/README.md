@@ -21,18 +21,23 @@ Full documentation, the `ask.if`/`ask.switch`/`ask.score` guide, and runnable ex
 
 ## Different states, one request
 
-`systemOne` takes one `state` per request. This backend still lets you write one call per state:
+`systemOne` takes one `state` per request. Cross-state packing is off unless you opt in:
 
 ```ts
+import { createAsk } from "askif";
+import { jev } from "@askif/jev";
+
+const ask = createAsk({ backend: jev({ multiState: true }) });
+
 await Promise.all([
   ask.score(tweetA, "How spicy?").level("mild").level("hot"),
   ask.if(tweetB, "is a reply", () => {}),
 ]);
 ```
 
-Calls from the same tick are packed into one request, up to `maxStatesPerBatch` on the `ask` instance (default 16) and this backend's own cap of 32 states. The state on the wire is `{ items: { i0: tweetA, i1: tweetB } }`, and each question is pointed at its item. A tick that only mentions one state is sent exactly as before.
+Those calls then share one request, up to `maxStatesPerBatch` on the `ask` instance (default 16) and this backend's own cap of 32 states. The state on the wire is `{ items: { i0: tweetA, i1: tweetB } }`, and each question is pointed at its item. A tick that only mentions one state is sent exactly as before. There is no live test of this packing.
 
-Opt out with `jev({ multiState: false })`, or `ask.configure({ maxStatesPerBatch: 1 })`.
+Leave `multiState` unset, or set `ask.configure({ maxStatesPerBatch: 1 })`, to keep one request per state.
 
 ## Other Jev-compatible servers
 

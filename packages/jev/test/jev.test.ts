@@ -123,6 +123,7 @@ test("different states in one tick become one composite systemOne call", async (
   const bodies: Json[] = [];
   const ask = createAsk({
     backend: jev({
+      multiState: true,
       client: clientFor(
         {
           q0: { type: "noul", noul: 0.93 },
@@ -165,6 +166,7 @@ test("different states in one tick become one composite systemOne call", async (
 test("decideMany packs states, keeps criteria, and stringifies scalar states", async () => {
   const bodies: Json[] = [];
   const backend = jev({
+    multiState: true,
     client: clientFor(
       {
         odd: { type: "noul", noul: 0.99 },
@@ -232,6 +234,7 @@ test("one bad answer fails only that call", async () => {
   const bodies: Json[] = [];
   const ask = createAsk({
     backend: jev({
+      multiState: true,
       client: clientFor(
         {
           q0: { type: "noul", noul: 0.2 },
@@ -258,6 +261,7 @@ test("one bad answer fails only that call", async () => {
 test("a failed request rejects every item in the call", async () => {
   const ask = createAsk({
     backend: jev({
+      multiState: true,
       client: new TypeSafeClient({
         apiKey: "test",
         retry: { maxRetries: 0 },
@@ -273,6 +277,18 @@ test("a failed request rejects every item in the call", async () => {
       if (isAskError(result.reason)) assert.equal(result.reason.code, "BACKEND_FAILED");
     }
   }
+});
+
+test("multiState defaults to off", async () => {
+  const bodies: Json[] = [];
+  const backend = jev({ client: clientFor({ q0: { type: "noul", noul: 0.6 } }, bodies) });
+  assert.equal(backend.multiState, undefined);
+  assert.equal(backend.decideMany, undefined);
+  const ask = createAsk({ backend, maxStatesPerBatch: 10 });
+  const [first, second] = await Promise.all([ask.is("one", "ok"), ask.is("two", "ok")]);
+  assert.equal(first, true);
+  assert.equal(second, true);
+  assert.equal(bodies.length, 2);
 });
 
 test("multiState: false keeps one request per state", async () => {

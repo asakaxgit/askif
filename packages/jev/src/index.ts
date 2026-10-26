@@ -16,7 +16,7 @@ export type JevOptions = TypeSafeClientConfig & {
   readonly client?: TypeSafeClient;
   /**
    * Pack different states from the same tick into one `systemOne` call.
-   * Default: true. Set false to send one request per state.
+   * Default: false. Set true to opt in.
    */
   readonly multiState?: boolean;
 };
@@ -141,7 +141,7 @@ const toItemResult = (id: string, result: QuestionResult | undefined): ItemResul
  * needed when this backend is actually used.
  */
 export const jev = (options: JevOptions = {}): Backend => {
-  const { model, client, multiState = true, ...clientConfig } = options;
+  const { model, client, multiState = false, ...clientConfig } = options;
   let clientPromise: Promise<TypeSafeClient> | undefined;
 
   const loadClient = async (): Promise<TypeSafeClient> => {

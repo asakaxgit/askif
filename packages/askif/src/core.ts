@@ -128,6 +128,8 @@ const checkCount = (what: "options" | "levels", count: number, max: number | und
 type Pending = {
   readonly question: Question;
   readonly state: State;
+  /** Images in `state`. A repeated state contributes this once per request. */
+  readonly imageCount: number;
   readonly resolve: (answer: Answer) => void;
   readonly reject: (error: unknown) => void;
 };
@@ -231,21 +233,37 @@ export const createAsk = (
   };
 
   // Items arrive grouped by state (first-seen state, then that state's questions, in call order).
-  // A chunk closes when another question would pass the question limit or another state would pass the state limit.
-  const pack = (items: readonly Pending[], maxQuestions: number, maxStates: number): Pending[][] => {
+  // A chunk closes when another question would pass the question limit, another state would pass
+  // the state limit, or another state's images would pass maxImages. Images are counted once per
+  // distinct state. States are not rewritten: `[image N]` stays local to each state.
+  const pack = (
+    items: readonly Pending[],
+    maxQuestions: number,
+    maxStates: number,
+    maxImages: number,
+  ): Pending[][] => {
     const chunks: Pending[][] = [];
     let current: Pending[] = [];
     const states = new Set<string>();
+    let images = 0;
     const close = (): void => {
       if (current.length === 0) return;
       chunks.push(current);
       current = [];
       states.clear();
+      images = 0;
     };
     for (const item of items) {
       const key = JSON.stringify(item.state);
-      const addsState = !states.has(key);
-      if (current.length > 0 && (current.length >= maxQuestions || (addsState && states.size >= maxStates))) close();
+      const seen = states.has(key);
+      const addsImages = seen ? 0 : item.imageCount;
+      const overBudget =
+        current.length >= maxQuestions ||
+        (!seen && states.size >= maxStates) ||
+        (addsImages > 0 && images + addsImages > maxImages);
+      if (current.length > 0 && overBudget) close();
+      // Membership is checked again: a chunk that just closed does not already contain this state.
+      if (!states.has(key)) images += item.imageCount;
       current.push(item);
       states.add(key);
     }
@@ -261,8 +279,9 @@ export const createAsk = (
       const items = [...byState.values()].flatMap((batch) => batch.items);
       const maxQuestions = questionLimit(backend);
       const maxStates = stateLimit(backend);
+      const maxImages = backend.limits?.maxImages ?? 0;
       const many = maxStates > 1 && backend.decideMany !== undefined;
-      for (const chunk of pack(items, maxQuestions, maxStates)) {
+      for (const chunk of pack(items, maxQuestions, maxStates, maxImages)) {
         if (many) void sendMany(backend, chunk);
         else {
           const first = chunk[0];
@@ -273,8 +292,7 @@ export const createAsk = (
   };
 
   /** A state with images only goes to a backend that takes that many; otherwise base64 would be sent as text. */
-  const imageProblem = (backend: Backend, state: State): string | undefined => {
-    const found = extractImages(state).images.length;
+  const imageProblem = (backend: Backend, found: number): string | undefined => {
     const max = backend.limits?.maxImages ?? 0;
     if (found === 0 || found <= max) return undefined;
     return max === 0
@@ -284,7 +302,8 @@ export const createAsk = (
 
   const enqueue = (backend: Backend, state: State, question: Question): Promise<Answer> =>
     new Promise((resolve, reject) => {
-      const problem = imageProblem(backend, state);
+      const imageCount = extractImages(state).images.length;
+      const problem = imageProblem(backend, imageCount);
       if (problem !== undefined) {
         reject(makeAskError("UNSUPPORTED_INPUT", problem));
         return;
@@ -294,7 +313,7 @@ export const createAsk = (
       const key = JSON.stringify(state);
       const batch = byState.get(key) ?? { backend, state, items: [] };
       byState.set(key, batch);
-      batch.items.push({ question, state, resolve, reject });
+      batch.items.push({ question, state, imageCount, resolve, reject });
       if (!flushScheduled) {
         flushScheduled = true;
         // Two hops: chains start on the next microtask, so a direct call like

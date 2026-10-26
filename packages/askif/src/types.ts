@@ -86,7 +86,11 @@ export type ScaleAnswer = {
 export type Answer = YesNoAnswer | ChoiceAnswer | ScaleAnswer;
 
 export type BackendLimits = {
-  /** How many images a state may contain. Absent means the backend takes no images. */
+  /**
+   * How many images one request may contain. Absent means the backend takes no images.
+   * One state over this limit is rejected. A packed call counts each distinct state once and
+   * will not exceed it either.
+   */
   readonly maxImages?: number;
   readonly maxOptions?: number;
   readonly maxLevels?: number;
@@ -135,6 +139,9 @@ export type Backend = {
    * Answer a list of (state, question) items in one call.
    * Required when `multiState` is true; ignored otherwise.
    * Throw only when the whole call failed. `{ error }` fails one item.
+   * Distinct states here hold at most `limits.maxImages` images in total, and each state is
+   * unchanged, so `extractImages` numbers from 1 inside that state. For one flat image list,
+   * call `extractImages(state, { from })` and keep `from` running across states, in this order.
    */
   readonly decideMany?: (items: readonly DecisionItem[]) => Promise<readonly ItemResult[]>;
 };

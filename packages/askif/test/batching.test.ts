@@ -1,10 +1,46 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { createAsk, isAskError, makeAskError, mock } from "../src/index.js";
-import type { Answer, Backend, QuestionResult } from "../src/index.js";
+import { createAsk, extractImages, image, isAskError, isImage, makeAskError, mock } from "../src/index.js";
+import type { Answer, Backend, QuestionResult, State } from "../src/index.js";
 import { tableBackend } from "./helpers.js";
 
 const yes = (probability: number): Answer => ({ kind: "yesno", probability });
+
+const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+const PNG = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
+const JPEG = Uint8Array.from([0xff, 0xd8, 0xff, 0xe0, 0, 16, 0x4a, 0x46, 0x49, 0x46]);
+const GIF = Uint8Array.from([0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 1, 0, 1, 0]);
+
+/** Images across distinct states, in first-seen order. A repeated state counts once. */
+const imagesIn = (states: readonly State[]): number => {
+  const seen = new Set<string>();
+  let total = 0;
+  for (const state of states) {
+    const key = JSON.stringify(state);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    total += extractImages(state).images.length;
+  }
+  return total;
+};
+
+/** Placeholders a flat image list would use if each state continues numbering with `from`. */
+const labelsAcross = (states: readonly State[]): string[] => {
+  const seen = new Set<string>();
+  const labels: string[] = [];
+  let from = 1;
+  for (const state of states) {
+    const key = JSON.stringify(state);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const extracted = extractImages(state, { from });
+    from += extracted.images.length;
+    labels.push(...(JSON.stringify(extracted.state).match(/\[image \d+\]/g) ?? []));
+  }
+  return labels;
+};
 
 test("questions on the same state in the same tick share one call", async () => {
   const backend = tableBackend({ yesno: { "is animal": 0.9 } });
@@ -286,4 +322,95 @@ test("a thrown decideMany rejects every item in that call", async () => {
       }
     }
   }
+});
+
+test("a packed call stays within maxImages, counting a repeated state once", async () => {
+  const backend = mock(() => yes(1), { maxImages: 1 }, { multiState: true });
+  const ask = createAsk({ backend, maxStatesPerBatch: 8 });
+  const shared = { id: "a", photo: image(PNG) };
+  const other = { id: "b", photo: image(JPEG) };
+  const [first, second, third] = await Promise.all([
+    ask.is(shared, "one"),
+    ask.is(shared, "two"),
+    ask.is(other, "three"),
+  ]);
+  assert.equal(first && second && third, true);
+  assert.equal(backend.manyCalls.length, 0);
+  assert.equal(backend.calls.length, 2);
+  assert.equal(Object.keys(backend.calls[0]?.questions ?? {}).length, 2);
+  assert.equal(imagesIn(backend.calls.map((call) => call.state)), 2);
+  for (const call of backend.calls) assert.equal(imagesIn([call.state]), 1);
+});
+
+test("image states share a call only until maxImages is full", async () => {
+  const backend = mock(() => yes(1), { maxImages: 2 }, { multiState: true });
+  const ask = createAsk({ backend });
+  const states = [
+    { id: "a", photo: image(PNG) },
+    { id: "b", photo: image(JPEG) },
+    { id: "c", photo: image(GIF) },
+  ];
+  await Promise.all(states.map((state) => ask.is(state, "cat")));
+  assert.equal(backend.manyCalls.length, 1);
+  assert.equal(backend.calls.length, 1);
+  const packed = backend.manyCalls[0]?.map((item) => item.state) ?? [];
+  assert.equal(imagesIn(packed), 2);
+  assert.equal(imagesIn([backend.calls[0]?.state ?? null]), 1);
+  assert.deepEqual(labelsAcross(packed), ["[image 1]", "[image 2]"]);
+  const [left, right] = packed;
+  assert.ok(isImage(isRecord(left) ? left["photo"] : undefined));
+  assert.ok(isImage(isRecord(right) ? right["photo"] : undefined));
+});
+
+test("text states can share a request with images without pushing the image count over", async () => {
+  const backend = mock(() => yes(1), { maxImages: 1 }, { multiState: true });
+  const ask = createAsk({ backend });
+  await Promise.all([
+    ask.is({ id: "note" }, "text"),
+    ask.is({ id: "a", photo: image(PNG) }, "cat"),
+    ask.is({ id: "b", photo: image(JPEG) }, "cat"),
+    ask.is("tail", "text"),
+  ]);
+  const groups = [
+    ...backend.manyCalls.map((call) => call.map((item) => item.state)),
+    ...backend.calls.map((call) => [call.state]),
+  ];
+  assert.equal(groups.length, 2);
+  for (const group of groups) assert.equal(imagesIn(group), 1);
+});
+
+test("one state that already uses the image budget is not packed with another image state", async () => {
+  const backend = mock(() => yes(1), { maxImages: 2 }, { multiState: true });
+  const ask = createAsk({ backend });
+  const heavy = { id: "a", photos: [image(PNG), image(JPEG)] };
+  const extra = { id: "b", photo: image(GIF) };
+  await Promise.all([ask.is(heavy, "cat"), ask.is(extra, "cat")]);
+  assert.equal(backend.manyCalls.length, 0);
+  assert.equal(backend.calls.length, 2);
+  assert.deepEqual(
+    backend.calls.map((call) => imagesIn([call.state])),
+    [2, 1],
+  );
+});
+
+test("a state over maxImages is still rejected when the backend packs states", async () => {
+  const backend = mock(() => yes(1), { maxImages: 1 }, { multiState: true });
+  const ask = createAsk({ backend });
+  await assert.rejects(
+    () => ask.is({ photos: [image(PNG), image(JPEG)] }, "cat"),
+    (error) => isAskError(error) && error.code === "UNSUPPORTED_INPUT" && /at most 1/.test(error.message),
+  );
+  assert.equal(backend.calls.length, 0);
+  assert.equal(backend.manyCalls.length, 0);
+});
+
+test("a question split does not let the next image state join a call that already holds those images", async () => {
+  const backend = mock(() => yes(1), { maxImages: 1 }, { multiState: true });
+  const ask = createAsk({ backend, maxBatchSize: 1 });
+  const shared = { id: "a", photo: image(PNG) };
+  const other = { id: "b", photo: image(JPEG) };
+  await Promise.all([ask.is(shared, "one"), ask.is(shared, "two"), ask.is(other, "three")]);
+  assert.equal(backend.manyCalls.length, 0);
+  assert.equal(backend.calls.length, 3);
+  for (const call of backend.calls) assert.equal(imagesIn([call.state]), 1);
 });
