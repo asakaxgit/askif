@@ -26,7 +26,7 @@ Ideas not yet done, roughly in priority order.
 | OpenJev | a Codiv key (done), or a GPU/Apple-silicon host running openjev |
 
 - [x] A gated live suite (skipped unless the matching env var is set) for Jev, Clef, OpenAI, and
-      Jev-via-OpenRouter: `live/*.test.ts`, `pnpm run test:live`, `.github/workflows/live.yml`.
+      Jev-via-OpenRouter: `live/*.test.ts`, `pnpm run test:live`, `.github/workflows/live.yml`, `.github/workflows/live-daily.yml` (`jev` and `clef` on the daily cron).
       OpenAI's run covers `response_format` on `gpt-6-luna`. Still needs credentials and is not
       part of `pnpm run check`. Azure, Vertex, Bedrock, Gemini, and local servers are not in it.
 

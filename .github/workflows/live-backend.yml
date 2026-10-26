@@ -1,0 +1,97 @@
+# One live backend, called by live.yml and live-daily.yml.
+# Not triggered on its own. Callers pass only that backend's secrets.
+name: Live backend
+
+on:
+  workflow_call:
+    inputs:
+      backend:
+        description: jev, clef, openai, or openrouter
+        required: true
+        type: string
+      name:
+        description: Job name shown in the Actions log
+        required: true
+        type: string
+    secrets:
+      TYPESAFE_API_KEY:
+        required: false
+      CLOUDFLARE_ACCOUNT_ID:
+        required: false
+      CLOUDFLARE_API_TOKEN:
+        required: false
+      OPENAI_API_KEY:
+        required: false
+      OPENROUTER_API_KEY:
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    name: ${{ inputs.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      BACKEND: ${{ inputs.backend }}
+      TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: secrets
+        run: |
+          case "$BACKEND" in
+            jev)
+              bash .github/scripts/require-live-secrets.sh TYPESAFE_API_KEY
+              ;;
+            clef)
+              bash .github/scripts/require-live-secrets.sh CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN
+              ;;
+            openai)
+              bash .github/scripts/require-live-secrets.sh OPENAI_API_KEY
+              ;;
+            openrouter)
+              bash .github/scripts/require-live-secrets.sh OPENROUTER_API_KEY
+              ;;
+            *)
+              echo "unknown backend: $BACKEND" >&2
+              exit 1
+              ;;
+          esac
+      - uses: pnpm/action-setup@v4
+        if: steps.secrets.outputs.present == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.secrets.outputs.present == 'true'
+        with:
+          node-version: 22
+          cache: pnpm
+      - if: steps.secrets.outputs.present == 'true'
+        run: pnpm install --frozen-lockfile
+      - name: Live tests
+        if: steps.secrets.outputs.present == 'true'
+        env:
+          LIVE_REQUIRE: "1"
+        run: |
+          case "$BACKEND" in
+            jev)
+              unset CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN OPENAI_API_KEY OPENROUTER_API_KEY
+              ;;
+            clef)
+              unset TYPESAFE_API_KEY OPENAI_API_KEY OPENROUTER_API_KEY
+              ;;
+            openai)
+              unset TYPESAFE_API_KEY CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN OPENROUTER_API_KEY
+              ;;
+            openrouter)
+              unset TYPESAFE_API_KEY CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN OPENAI_API_KEY
+              ;;
+            *)
+              echo "unknown backend: $BACKEND" >&2
+              exit 1
+              ;;
+          esac
+          pnpm run "test:live:$BACKEND"

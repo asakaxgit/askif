@@ -14,10 +14,10 @@ Style and release notes are in the [README](./README.md#contributing) and [`RELE
 
 ## Live tests
 
-`pnpm run test:live` calls the real backends. [`.github/workflows/live.yml`](./.github/workflows/live.yml) runs the same scripts.
+`pnpm run test:live` calls the real backends. [`.github/workflows/live.yml`](./.github/workflows/live.yml) runs every backend on a push to `main` and on `workflow_dispatch`. [`.github/workflows/live-daily.yml`](./.github/workflows/live-daily.yml) runs `jev` and `clef` on the daily schedule. Both call [`.github/workflows/live-backend.yml`](./.github/workflows/live-backend.yml) for the install and test steps.
 
-- **When:** every push to `main`, every day at 15:17 UTC (00:17 in Japan, cron `17 15 * * *`), and `workflow_dispatch` (the Actions tab can limit the run to one backend).
-- **Pull requests:** the workflow has no `pull_request` trigger. A fork's pull request cannot receive repository secrets. Dispatch the workflow to run it on a branch once the file is on the default branch.
+- **When:** every push to `main` runs all four backends. Every day at 15:17 UTC (00:17 in Japan, cron `17 15 * * *`) runs only `jev` and `clef`, the cheap backends. OpenAI and OpenRouter are not on that cron. `workflow_dispatch` on Live can limit a run to one backend.
+- **Pull requests:** neither workflow has a `pull_request` trigger. A fork's pull request cannot receive repository secrets. Dispatch Live to run it on a branch once the workflow file is on the default branch.
 - **Missing secrets:** each backend is its own job. The job checks the secret, prints a `::notice`, writes a step summary, skips install and tests, and stays green. It does not fail closed.
 - **Present secrets:** the test step sets `LIVE_REQUIRE=1`. If the variable is empty anyway, the run fails instead of reporting every network test as skipped.
 - **Node:** 22. One attempt per request (`maxRetries: 0` on Jev and OpenAI; Clef does not retry). Client timeout is 45 seconds.

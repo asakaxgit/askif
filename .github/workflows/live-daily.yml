@@ -1,0 +1,38 @@
+# Daily live tests for the cheap backends. OpenAI and OpenRouter stay on
+# push and workflow_dispatch in live.yml.
+#
+# schedule is the only trigger. There is no pull_request trigger, so a fork
+# never receives these secrets. Steps are live-backend.yml.
+name: Live daily
+
+on:
+  schedule:
+    # 15:17 UTC, which is 00:17 in Japan. Off the hour so it misses the cron herd.
+    - cron: "17 15 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-daily
+  cancel-in-progress: false
+
+jobs:
+  jev:
+    name: live @askif/jev
+    uses: ./.github/workflows/live-backend.yml
+    with:
+      backend: jev
+      name: live @askif/jev
+    secrets:
+      TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+
+  clef:
+    name: live @askif/clef
+    uses: ./.github/workflows/live-backend.yml
+    with:
+      backend: clef
+      name: live @askif/clef
+    secrets:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
