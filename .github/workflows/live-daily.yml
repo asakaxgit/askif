@@ -1,5 +1,5 @@
-# Daily live tests for the cheap backends. OpenAI and OpenRouter stay on
-# push and workflow_dispatch in live.yml.
+# Daily live tests for the cheap backends. OpenAI, OpenRouter, and Vercel stay
+# on push and workflow_dispatch in live.yml.
 #
 # schedule is the only trigger. There is no pull_request trigger, so a fork
 # never receives these secrets. Steps are live-backend.yml.

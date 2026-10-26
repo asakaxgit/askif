@@ -211,7 +211,7 @@ await Promise.all([
 ]); // one request
 ```
 
-Questions about **different states** stay in separate requests, unless the backend opts in with `multiState`. The default `mock`, `@askif/openai`, `@askif/clef`, and `@askif/jev` don't, so nothing changes until you opt in. `jev({ multiState: true })` packs same-tick calls such as `ask.score(tweetA, ...)` and `ask.if(tweetB, ...)` into one `systemOne` request. Jev's request has a single `state`, so the backend packs the states into `{ items: { i0, i1, ... } }` and points each question at its own item. Your question text stays as you wrote it.
+Questions about **different states** stay in separate requests, unless the backend opts in with `multiState`. The default `mock`, `@askif/openai`, `@askif/clef`, `@askif/jev`, and `@askif/vercel` don't, so nothing changes until you opt in. `jev({ multiState: true })` packs same-tick calls such as `ask.score(tweetA, ...)` and `ask.if(tweetB, ...)` into one `systemOne` request. Jev's request has a single `state`, so the backend packs the states into `{ items: { i0, i1, ... } }` and points each question at its own item. Your question text stays as you wrote it.
 
 `maxStatesPerBatch` (default 16) caps how many distinct states share that call. The backend can set a lower ceiling with `limits.maxStatesPerCall` (Jev's is 32). Set `maxStatesPerBatch` to `1` to keep one request per state. A batch that happens to hold one state uses the original request shape, with no `items` wrapper.
 
@@ -254,6 +254,7 @@ The model sees each image where you put it, and your question can refer to it as
 | `@askif/clef` | up to 4: PNG, JPEG, WebP |
 | `@askif/openai` | PNG, JPEG, WebP, GIF (non-animated) |
 | `@askif/jev` | opt-in, up to 64: PNG and JPEG (`jev({ images: true })`; see the [jev README](packages/jev/README.md#images)) |
+| `@askif/vercel` | HTTP: none. `vercelDecide({ images: true })`: PNG, JPEG, WebP, GIF, up to 16 (askif's cap). The default model is text and JSON only. See the [vercel README](packages/vercel/README.md#images) |
 
 Tried so far on simple subjects: animals, everyday objects, shapes, a stop sign, a photograph of an old bicycle, Earth from the Moon. Subtler judgments, such as whether a photographed parcel is damaged, have not been tested here, so try your own photos (`@askif/clef` has `examples/try-image.ts` for that) before relying on one.
 
@@ -307,7 +308,7 @@ const viaOpenRouter = createAsk({
 
 For measured tokens and latency across the backends, see [`bench/`](./bench).
 
-See the `Backend` type (from `askif`) to connect another model entirely — `@askif/jev` is just one implementation of it. [`@askif/openai`](./packages/openai) is another, for OpenAI and OpenAI-compatible APIs, and [`@askif/clef`](./packages/clef) is a third, for Cloudflare Workers AI's Clef (same System One format as Jev, so questions are batched into one request).
+See the `Backend` type (from `askif`) to connect another model entirely — `@askif/jev` is just one implementation of it. [`@askif/openai`](./packages/openai) is another, for OpenAI and OpenAI-compatible APIs, [`@askif/clef`](./packages/clef) is a third, for Cloudflare Workers AI's Clef (same System One format as Jev, so questions are batched into one request), and [`@askif/vercel`](./packages/vercel) is a fourth, for Vercel AI Gateway's Decision API (`POST /v1/evaluate`, or AI SDK `experimental_decide` via `vercelDecide()`).
 
 For tests, `mock` (from `askif`, no `@askif/jev` needed) answers questions locally and records every call:
 
@@ -385,7 +386,7 @@ import { ask as decide } from "@askif/jev";
 
 ## Contributing
 
-This is a [pnpm](https://pnpm.io) workspace with four packages: [`packages/askif`](./packages/askif) (the toolkit), [`packages/jev`](./packages/jev) (the Jev bundle), [`packages/openai`](./packages/openai) (the OpenAI bundle), and [`packages/clef`](./packages/clef) (the Cloudflare Clef bundle) — the last three each depend on `askif`.
+This is a [pnpm](https://pnpm.io) workspace with five packages: [`packages/askif`](./packages/askif) (the toolkit), [`packages/jev`](./packages/jev) (the Jev bundle), [`packages/openai`](./packages/openai) (the OpenAI bundle), [`packages/clef`](./packages/clef) (the Cloudflare Clef bundle), and [`packages/vercel`](./packages/vercel) (the Vercel AI Gateway Decision API bundle). The backend packages depend on `askif`.
 
 ```sh
 pnpm install
@@ -404,7 +405,7 @@ Publishing is automated via [Changesets](https://github.com/changesets/changeset
 
 `pnpm run check` stays offline. `pnpm run test:live` calls the real provider APIs. [`.github/workflows/live.yml`](./.github/workflows/live.yml) runs every backend on a push to `main` and from the Actions tab. [`.github/workflows/live-daily.yml`](./.github/workflows/live-daily.yml) runs `jev` and `clef` on the daily schedule. The same section, with the per-job coverage, is in [`CONTRIBUTING.md`](./CONTRIBUTING.md#live-tests).
 
-Push to `main` runs all four backends. `workflow_dispatch` on Live can run all of them or one. The daily run is 15:17 UTC (00:17 in Japan, cron `17 15 * * *`) and is only `jev` and `clef`, because those backends are cheap. OpenAI and OpenRouter are not on that cron. Neither workflow has a `pull_request` trigger, so a pull request from a fork never receives these secrets. Each backend is its own job. A missing secret skips that job with a notice and a green result.
+Push to `main` runs every backend job. `workflow_dispatch` on Live can run all of them or one. The daily run is 15:17 UTC (00:17 in Japan, cron `17 15 * * *`) and is only `jev` and `clef`, because those backends are cheap. OpenAI, OpenRouter, and Vercel are not on that cron. Neither workflow has a `pull_request` trigger, so a pull request from a fork never receives these secrets. Each backend is its own job. A missing secret skips that job with a notice and a green result.
 
 Keys are read from the environment, which on GitHub Actions is filled only from repository secrets (Settings → Secrets and variables → Actions). Nothing in the repo stores a key. `.env` and `.env.local` are gitignored.
 
@@ -415,6 +416,7 @@ Keys are read from the environment, which on GitHub Actions is filled only from 
 | `CLOUDFLARE_API_TOKEN` | `@askif/clef`. `clef()` reads this name. | A Cloudflare API token with the Workers AI permission. Create one at [dash.cloudflare.com/profile/api-tokens](https://dash.cloudflare.com/profile/api-tokens) (the Workers AI template). |
 | `OPENAI_API_KEY` | `@askif/openai`. The `openai` SDK reads this name when `openai()` is called without `apiKey`. | An OpenAI platform account. Create a key at [platform.openai.com/api-keys](https://platform.openai.com/api-keys). |
 | `OPENROUTER_API_KEY` | Jev pointed at OpenRouter. The live test passes it as `jev({ apiKey, baseURL: "https://openrouter.ai/api" })`. The TypeSafe SDK does not read this name itself. | An OpenRouter account. Create a key at [openrouter.ai/keys](https://openrouter.ai/keys). |
+| `AI_GATEWAY_API_KEY` | `@askif/vercel`. `vercel()` and `vercelDecide()` read this name when called without `apiKey`. The `ai` package reads the same name. | A Vercel AI Gateway key. Create one from the AI Gateway section of the Vercel dashboard. |
 
 Locally, export the variables (or load a gitignored env file in your shell) and run `pnpm run test:live`. A backend whose variable is unset is reported as skipped, and the command exits 0.
 

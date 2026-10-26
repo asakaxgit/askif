@@ -19,6 +19,7 @@ on:
           - "@askif/jev"
           - "@askif/openai"
           - "@askif/clef"
+          - "@askif/vercel"
           - all
         default: all
         required: true

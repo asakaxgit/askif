@@ -71,6 +71,22 @@ Limits, from the [images docs](https://docs.typesafe.ai/images). Both ends of ea
 
 `images` and `multiState` are separate switches. Box questions are not part of askif. Pointing `baseURL` at OpenRouter (which lists `typesafe/jev-1.14` with image input) is covered by `live/openrouter.test.ts` when `OPENROUTER_API_KEY` is set: that test sends the multipart body and the `TypeSafe-Danger-Zone-Images` header to `https://openrouter.ai/api/v1/systemone` and checks the answer. It is not part of `pnpm run check`.
 
+## Vercel AI Gateway, TypeSafe-compatible route
+
+AI Gateway accepts TypeSafe's request shape at `https://ai-gateway.vercel.sh/typesafe`, including `noul` for yes/no. Point `jev()` at it:
+
+```ts
+import { jev } from "@askif/jev";
+
+const backend = jev({
+  apiKey: process.env.AI_GATEWAY_API_KEY,
+  baseURL: "https://ai-gateway.vercel.sh/typesafe",
+  model: "typesafe-ai/jev",
+});
+```
+
+The URL and model id are from [Vercel's TypeSafe API docs](https://vercel.com/docs/ai-gateway/sdks-and-apis/typesafe). This repo has not called that URL. For the Decision API itself (`boolean` instead of `noul`, plus fallbacks and gateway cost), use [`@askif/vercel`](../vercel).
+
 ## Other Jev-compatible servers
 
 `@askif/jev` speaks TypeSafe's Jev wire API, so it also works with [OpenJev](https://github.com/razorback16/openjev), an open Jev-compatible server (DiffusionGemma via vLLM or MLX; hosted on [Codiv](https://codiv.ai)). Only `baseURL` and `model` change:

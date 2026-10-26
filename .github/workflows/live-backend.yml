@@ -6,7 +6,7 @@ on:
   workflow_call:
     inputs:
       backend:
-        description: jev, clef, openai, or openrouter
+        description: jev, clef, openai, openrouter, or vercel
         required: true
         type: string
       name:
@@ -24,6 +24,8 @@ on:
         required: false
       OPENROUTER_API_KEY:
         required: false
+      AI_GATEWAY_API_KEY:
+        required: false
 
 permissions:
   contents: read
@@ -40,6 +42,7 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      AI_GATEWAY_API_KEY: ${{ secrets.AI_GATEWAY_API_KEY }}
     steps:
       - uses: actions/checkout@v4
       - id: secrets
@@ -56,6 +59,9 @@ jobs:
               ;;
             openrouter)
               bash .github/scripts/require-live-secrets.sh OPENROUTER_API_KEY
+              ;;
+            vercel)
+              bash .github/scripts/require-live-secrets.sh AI_GATEWAY_API_KEY
               ;;
             *)
               echo "unknown backend: $BACKEND" >&2
@@ -78,16 +84,19 @@ jobs:
         run: |
           case "$BACKEND" in
             jev)
-              unset CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN OPENAI_API_KEY OPENROUTER_API_KEY
+              unset CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN OPENAI_API_KEY OPENROUTER_API_KEY AI_GATEWAY_API_KEY
               ;;
             clef)
-              unset TYPESAFE_API_KEY OPENAI_API_KEY OPENROUTER_API_KEY
+              unset TYPESAFE_API_KEY OPENAI_API_KEY OPENROUTER_API_KEY AI_GATEWAY_API_KEY
               ;;
             openai)
-              unset TYPESAFE_API_KEY CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN OPENROUTER_API_KEY
+              unset TYPESAFE_API_KEY CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN OPENROUTER_API_KEY AI_GATEWAY_API_KEY
               ;;
             openrouter)
-              unset TYPESAFE_API_KEY CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN OPENAI_API_KEY
+              unset TYPESAFE_API_KEY CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN OPENAI_API_KEY AI_GATEWAY_API_KEY
+              ;;
+            vercel)
+              unset TYPESAFE_API_KEY CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN OPENAI_API_KEY OPENROUTER_API_KEY
               ;;
             *)
               echo "unknown backend: $BACKEND" >&2
