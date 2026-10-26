@@ -46,6 +46,20 @@ test("image() rejects what it can't make sense of", () => {
   assert.throws(() => image("", "image/png"), unsupported);
 });
 
+test("image() rejects a long run of padding quickly", () => {
+  const elapsed = (n: number): number => {
+    const input = `${"=".repeat(n)}A`;
+    const start = performance.now();
+    assert.throws(() => image(input, "image/png"));
+    return performance.now() - start;
+  };
+  const baseline = elapsed(1_000);
+  const ms = elapsed(50_000);
+  // `=+$` took about 1.5s at 50k and about 24s at 200k.
+  assert.ok(ms < 200, `image() took ${ms.toFixed(1)}ms`);
+  assert.ok(ms < baseline * 80 + 50, `image() ${ms.toFixed(1)}ms vs ${baseline.toFixed(1)}ms baseline`);
+});
+
 test("isImage() recognises images built by image() and nothing else", () => {
   assert.equal(isImage(image(PNG)), true);
   assert.equal(isImage({ type: "image", source: { kind: "url", url: "https://x" } }), false);

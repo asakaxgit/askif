@@ -8,6 +8,7 @@ export {
   clipUntrusted,
   effectiveProtection,
   looksInjected,
+  UNTRUSTED_IMAGE_CHARS,
   reduceDescription,
   reduceState,
   sanitizeText,

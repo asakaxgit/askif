@@ -6,6 +6,7 @@ import {
   isImage,
   isStandardImageDataUrl,
   isStandardImagePayload,
+  isTrustedImage,
 } from "./image.js";
 import type { Description, Json, ProtectionConfig, ProtectionOverride, State } from "./types.js";
 
@@ -27,6 +28,16 @@ export const DEFAULT_PROTECTION = {
   images: "auto",
   unsureOnInjection: true,
 } as const satisfies ProtectionConfig;
+
+/**
+ * Largest untrusted image payload, in characters.
+ * Clef's per-image file limit is 4 MiB, the smallest published in this repo (Jev allows 16 MiB).
+ * Base64 is longer than the file, so a payload under this stays under that file limit.
+ * Values returned by `image()` are not counted against it.
+ */
+export const UNTRUSTED_IMAGE_CHARS = 4 * 1024 * 1024;
+
+const refusedImage = (chars: number): string => `[refused image: ${chars} chars]`;
 
 export const effectiveProtection = (
   base: ProtectionConfig | false,
@@ -114,45 +125,49 @@ export const clipUntrusted = (text: string, max = 200): string => {
   return stripped.slice(0, Math.max(0, end));
 };
 
-/** A data URL may skip the string cap only up to the next finite cap, so it cannot grow without bound. */
-const imageStringCap = (p: ProtectionConfig): number => {
-  if (Number.isFinite(p.maxStringChars)) return p.maxStringChars;
-  if (Number.isFinite(p.maxStateChars)) return p.maxStateChars;
-  return Infinity;
-};
-
-const keepPayload = (data: string, p: ProtectionConfig): boolean => data.length <= imageStringCap(p);
-
-const keepImageString = (value: string, p: ProtectionConfig): boolean =>
-  p.images === "auto" && keepPayload(value, p) && isStandardImageDataUrl(value);
+const keepUntrustedPayload = (data: string): boolean => data.length <= UNTRUSTED_IMAGE_CHARS;
 
 const walkState = (value: Json, p: ProtectionConfig): Json => {
   if (typeof value === "string") {
-    if (keepImageString(value, p)) return value;
+    if (DATA_URL.test(value)) {
+      const payload = DATA_URL.exec(value)?.[2];
+      const n = payload === undefined ? value.length : payload.length;
+      const keep =
+        p.images === "auto" &&
+        payload !== undefined &&
+        keepUntrustedPayload(payload) &&
+        isStandardImageDataUrl(value);
+      if (keep) return value;
+      // Explicit mode leaves a short data URL as text. A long one is not forwarded as truncated base64.
+      if (p.images === "explicit" && (!Number.isFinite(p.maxStringChars) || value.length <= p.maxStringChars)) return value;
+      return refusedImage(n);
+    }
     const cleaned = sanitizeText(value, p);
-    // A refused data URL must stay text. Otherwise extractImages lifts it and the state cap ignores it.
-    if (p.images === "auto" && DATA_URL.test(cleaned)) return cleaned.replace(/^data:/i, "data :");
+    // Hidden characters can reveal a data URL. Do not forward that payload as text.
+    if (p.images === "auto" && DATA_URL.test(cleaned)) return refusedImage(cleaned.length);
     return cleaned;
   }
   if (typeof value !== "object" || value === null) return value;
   if (Array.isArray(value)) return value.map((entry) => walkState(entry, p));
-  // Untrusted JSON can look like image() or `{ content_type, base64 }`. Same alphabet and size rule as a data URL.
   if (isImage(value)) {
     const data = value.source.data;
-    if (keepPayload(data, p) && isStandardImagePayload(value.source.mediaType, data)) return value;
-    const broken: Json = { ...value, source: { kind: "base64 ", mediaType: value.source.mediaType, data } };
-    return walkState(broken, p);
+    const valid = isStandardImagePayload(value.source.mediaType, data);
+    if (isTrustedImage(value)) return valid ? value : refusedImage(data.length);
+    if (valid && keepUntrustedPayload(data)) return value;
+    return refusedImage(data.length);
   }
-  if (p.images === "auto" && isContentImage(value)) {
+  if (isContentImage(value)) {
     const data = value.base64;
-    if (keepPayload(data, p) && isStandardImagePayload(value.content_type, data)) return value;
-    const broken: Json = { ...value, content_type: `${value.content_type} ` };
-    return walkState(broken, p);
+    const valid = isStandardImagePayload(value.content_type, data) && keepUntrustedPayload(data);
+    if (!valid) return refusedImage(data.length);
+    if (p.images === "auto") return value;
+    if (Number.isFinite(p.maxStringChars) && data.length > p.maxStringChars) return refusedImage(data.length);
+    return value;
   }
   return Object.fromEntries(Object.entries(value).map(([key, entry]) => [sanitizeText(key, p), walkState(entry, p)]));
 };
 
-/** Walk a state and clean every string value and object key. Images are left untouched. */
+/** Walk a state and clean every string value and object key. Trusted `image()` values stay intact. */
 export const reduceState = (state: State, p: ProtectionConfig): State => {
   const reduced = walkState(state, p);
   if (Number.isFinite(p.maxStateChars)) {

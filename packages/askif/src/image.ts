@@ -53,14 +53,33 @@ export const isStandardImageDataUrl = (value: string): boolean => {
 export const isStandardImagePayload = (mediaType: string, data: string): boolean =>
   MEDIA_TYPE.test(mediaType) && isStandardBase64(data);
 
+/** At most two trailing `=`. A longer run is rejected in one pass; `=+$` backtracks. */
+const withoutPadding = (data: string): string | undefined => {
+  let end = data.length;
+  let pads = 0;
+  while (end > 0 && data.charCodeAt(end - 1) === 61) {
+    pads += 1;
+    if (pads > 2) return undefined;
+    end -= 1;
+  }
+  return data.slice(0, end);
+};
+
 /**
  * Standard base64 with padding, or undefined.
  * Accepts base64url (`-`/`_`, padding optional): sniffing already did, validation did not.
  */
 const canonicalizeBase64 = (data: string): string | undefined => {
   if (data.length === 0 || /[^A-Za-z0-9+/_=-]/.test(data)) return undefined;
-  const unpadded = data.replace(/-/g, "+").replace(/_/g, "/").replace(/=+$/, "");
-  if (unpadded.length === 0 || unpadded.length % 4 === 1 || !/^[A-Za-z0-9+/]+$/.test(unpadded)) return undefined;
+  const unpadded = withoutPadding(data.replace(/-/g, "+").replace(/_/g, "/"));
+  if (
+    unpadded === undefined ||
+    unpadded.length === 0 ||
+    unpadded.length % 4 === 1 ||
+    !/^[A-Za-z0-9+/]+$/.test(unpadded)
+  ) {
+    return undefined;
+  }
   return unpadded + "=".repeat((4 - (unpadded.length % 4)) % 4);
 };
 
@@ -100,8 +119,16 @@ export const image = (input: Uint8Array | string, mediaType?: string): Image => 
   if (data === undefined || !STANDARD_BASE64.test(data)) {
     throw makeAskError("UNSUPPORTED_INPUT", "The image data is empty or not valid base64.");
   }
-  return { type: "image", source: { kind: "base64", mediaType: type.toLowerCase(), data } };
+  const made: Image = { type: "image", source: { kind: "base64", mediaType: type.toLowerCase(), data } };
+  trustedImages.add(made);
+  return made;
 };
+
+/** Objects `image()` returned. A JSON look-alike is not in this set. */
+const trustedImages = new WeakSet<object>();
+
+/** True for the object `image()` returned, not for a copy or a parsed look-alike. */
+export const isTrustedImage = (value: object): boolean => trustedImages.has(value);
 
 /** A `{ content_type, base64 }` pair `extractImages` treats as an image in `"auto"` mode. */
 export const isContentImage = (value: unknown): value is { readonly content_type: string; readonly base64: string } =>
