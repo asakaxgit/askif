@@ -402,9 +402,9 @@ Publishing is automated via [Changesets](https://github.com/changesets/changeset
 
 ## Live tests
 
-`pnpm run check` stays offline. `pnpm run test:live` calls the real provider APIs and is what [`.github/workflows/live.yml`](./.github/workflows/live.yml) runs. The same section, with the per-job coverage, is in [`CONTRIBUTING.md`](./CONTRIBUTING.md#live-tests).
+`pnpm run check` stays offline. `pnpm run test:live` calls the real provider APIs. [`.github/workflows/live.yml`](./.github/workflows/live.yml) runs every backend on a push to `main` and from the Actions tab. [`.github/workflows/live-daily.yml`](./.github/workflows/live-daily.yml) runs `jev` and `clef` on the daily schedule. The same section, with the per-job coverage, is in [`CONTRIBUTING.md`](./CONTRIBUTING.md#live-tests).
 
-The workflow runs on every push to `main`, every day at 15:17 UTC (00:17 in Japan), and from the Actions tab (`workflow_dispatch`, optionally one backend). It has no `pull_request` trigger, so a pull request from a fork never receives these secrets. Each backend is its own job. A missing secret skips that job with a notice and a green result.
+Push to `main` runs all four backends. `workflow_dispatch` on Live can run all of them or one. The daily run is 15:17 UTC (00:17 in Japan, cron `17 15 * * *`) and is only `jev` and `clef`, because those backends are cheap. OpenAI and OpenRouter are not on that cron. Neither workflow has a `pull_request` trigger, so a pull request from a fork never receives these secrets. Each backend is its own job. A missing secret skips that job with a notice and a green result.
 
 Keys are read from the environment, which on GitHub Actions is filled only from repository secrets (Settings → Secrets and variables → Actions). Nothing in the repo stores a key. `.env` and `.env.local` are gitignored.
 
