@@ -29,7 +29,20 @@ const viaOpenJev = createAsk({
   }),
 });
 
+// Vercel AI Gateway's TypeSafe-compatible endpoint. Boolean questions stay
+// noul on this path. The URL and model id are from Vercel's TypeSafe docs.
+// This file does not call it.
+// https://vercel.com/docs/ai-gateway/sdks-and-apis/typesafe
+const viaGateway = createAsk({
+  backend: jev({
+    apiKey: process.env.AI_GATEWAY_API_KEY,
+    baseURL: "https://ai-gateway.vercel.sh/typesafe",
+    model: "typesafe-ai/jev",
+  }),
+});
+
 // None of these instances made a network call yet — that only happens on first use.
 assert.equal(typeof custom.if, "function");
 assert.equal(typeof viaOpenRouter.if, "function");
 assert.equal(typeof viaOpenJev.if, "function");
+assert.equal(typeof viaGateway.if, "function");

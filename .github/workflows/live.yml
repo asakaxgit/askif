@@ -24,6 +24,7 @@ on:
           - clef
           - openai
           - openrouter
+          - vercel
 
 permissions:
   contents: read
@@ -73,3 +74,13 @@ jobs:
       name: live OpenRouter (Jev)
     secrets:
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+
+  vercel:
+    name: live @askif/vercel
+    if: github.event_name != 'workflow_dispatch' || github.event.inputs.backend == 'all' || github.event.inputs.backend == 'vercel'
+    uses: ./.github/workflows/live-backend.yml
+    with:
+      backend: vercel
+      name: live @askif/vercel
+    secrets:
+      AI_GATEWAY_API_KEY: ${{ secrets.AI_GATEWAY_API_KEY }}
