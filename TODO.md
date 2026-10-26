@@ -25,8 +25,10 @@ Ideas not yet done, roughly in priority order.
 | Ollama / vLLM / LM Studio / llama.cpp | the server running locally with a model loaded |
 | OpenJev | a Codiv key (done), or a GPU/Apple-silicon host running openjev |
 
-- [ ] A gated live suite (skipped unless the matching env var is set) that sends one yes/no, one
-      choice and one scale question per target, so `response_format` support is confirmed.
+- [x] A gated live suite (skipped unless the matching env var is set) for Jev, Clef, OpenAI, and
+      Jev-via-OpenRouter: `live/*.test.ts`, `pnpm run test:live`, `.github/workflows/live.yml`.
+      OpenAI's run covers `response_format` on `gpt-6-luna`. Still needs credentials and is not
+      part of `pnpm run check`. Azure, Vertex, Bedrock, Gemini, and local servers are not in it.
 
 ## More OpenAI-compatible endpoints (docs + example only, just a `baseURL`)
 
@@ -35,12 +37,12 @@ Ideas not yet done, roughly in priority order.
 
 ## New backends
 
-- [ ] `@askif/clef`: first manual publish. (Live smoke test done 2026-10-06: 22/22 image answers correct; tokens and latency measured, see the package README. The bench also ran scale and up to 64 mixed questions per request live, via `decide`. Not yet live-tested: askif-level batching through `ask`, the Workers binding, `clef-flash` image answers, error paths.) Image input goes through askif's `image()` / `extractImages()`; data URLs and `{ content_type, base64 }` still work.
+- [ ] `@askif/clef`: first manual publish. (Live smoke test done 2026-10-06: 22/22 image answers correct; tokens and latency measured, see the package README. The bench also ran scale and up to 64 mixed questions per request live, via `decide`. `live/clef.test.ts` now covers ask-level batching and one `clef-flash` image when the Cloudflare secrets are set. Still not live-tested: the Workers binding, and error paths other than the HTTP 413 probe.) Image input goes through askif's `image()` / `extractImages()`; data URLs and `{ content_type, base64 }` still work.
 - [ ] If a third System One backend appears, move the shared question/answer mapping from `@askif/jev` and `@askif/clef` into `askif` (until then, `packages/askif/test/fixtures/system-one.ts` keeps them in step).
 - [ ] Image sources beyond base64: `{ kind: "url" }` and `{ kind: "bucket", provider, bucket, key }` (R2/S3/GCS) in `askif`'s `ImageSource`, plus a resolver (e.g. a `resolveImage` hook on `createAsk`) that downloads to base64 for backends that can't fetch themselves; backends that can (OpenAI takes URLs) would advertise it. Hash the batching key if multi-MB base64 states get slow (it is `JSON.stringify(state)`).
 - [ ] Test a real "damaged parcel" return photo end to end (needs the maintainer's own photos; public-domain searches found no clean consumer-parcel example, and the closest industrial crates scored 0.56-0.60, which is not evidence either way). Use `packages/clef/examples/try-image.ts`.
-- [ ] Clef HTTP 413 on a small JPEG with EXIF/250 DPI metadata (see the clef README): find the cause, maybe strip or downscale in the backend.
-- [ ] `@askif/openai` image input: live-verify (needs a quota that allows it), and consider the `detail` option.
+- [ ] Clef HTTP 413 on a small JPEG with EXIF/250 DPI metadata (see the clef README): find the cause, maybe strip or downscale in the backend. `live/clef.test.ts` probes it (413 or a real answer both pass; the log says which) but does not fix it.
+- [ ] `@askif/openai` image input: the live suite now sends one fixture image (`live/openai.test.ts`); confirm a passing run once quota allows it, and consider the `detail` option.
 - [ ] `@askif/anthropic`: native Anthropic adapter (tool use / JSON output for probabilities).
 
 ## Release

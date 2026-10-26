@@ -35,7 +35,7 @@ await Promise.all([
 ]);
 ```
 
-Those calls then share one request, up to `maxStatesPerBatch` on the `ask` instance (default 16) and this backend's own cap of 32 states. The state on the wire is `{ items: { i0: tweetA, i1: tweetB } }`, and each question is pointed at its item. A tick that only mentions one state is sent exactly as before. There is no live test of this packing.
+Those calls then share one request, up to `maxStatesPerBatch` on the `ask` instance (default 16) and this backend's own cap of 32 states. The state on the wire is `{ items: { i0: tweetA, i1: tweetB } }`, and each question is pointed at its item. A tick that only mentions one state is sent exactly as before. `live/jev.test.ts` covers this packing against the live API when `TYPESAFE_API_KEY` is set (see the repo's Live tests section). It is not part of `pnpm run check`.
 
 Leave `multiState` unset, or set `ask.configure({ maxStatesPerBatch: 1 })`, to keep one request per state.
 
@@ -69,7 +69,7 @@ Limits, from the [images docs](https://docs.typesafe.ai/images). Both ends of ea
 - At most 64 images per request. Jev publishes no count; 64 is askif's guard (`limits.maxImages`). A packed call counts each distinct state once and will not exceed it, and images inside questions share the same 64 and the same 32 MiB budget.
 - Jev strips metadata and does not apply EXIF orientation. A baseline JPEG is the documented preference.
 
-`images` and `multiState` are separate switches. Box questions are not part of askif. Pointing `baseURL` at OpenRouter (which lists `typesafe/jev-1.14` with image input) and expecting the assets and the danger-zone header to be forwarded has not been tested.
+`images` and `multiState` are separate switches. Box questions are not part of askif. Pointing `baseURL` at OpenRouter (which lists `typesafe/jev-1.14` with image input) is covered by `live/openrouter.test.ts` when `OPENROUTER_API_KEY` is set: that test sends the multipart body and the `TypeSafe-Danger-Zone-Images` header to `https://openrouter.ai/api/v1/systemone` and checks the answer. It is not part of `pnpm run check`.
 
 ## Other Jev-compatible servers
 

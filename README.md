@@ -391,6 +391,7 @@ This is a [pnpm](https://pnpm.io) workspace with four packages: [`packages/askif
 pnpm install
 pnpm run check   # lint + typecheck + tests + docs check (no API key needed)
 pnpm run build
+pnpm run test:live   # real providers; see Live tests below
 ```
 
 Some code blocks in this README are embedded from each package's `examples/` with [embedme](https://github.com/zakhenry/embedme), so they can't drift from the actual, tested behavior — look for a `// packages/*/examples/*.ts` comment as the first line of a block. If you change one of those files, run `pnpm run docs` to refresh the embedded copies before committing; `pnpm run docs:check` (part of `pnpm run check`, and enforced in CI) fails if they're out of sync.
@@ -398,6 +399,24 @@ Some code blocks in this README are embedded from each package's `examples/` wit
 The library's source follows a few conventions, enforced by ESLint: `type` instead of `interface`, unions instead of `enum`, arrow functions only, no classes, and no `as` casts (`as const` and `satisfies` are fine).
 
 Publishing is automated via [Changesets](https://github.com/changesets/changesets) — see [`RELEASING.md`](./RELEASING.md).
+
+## Live tests
+
+`pnpm run check` stays offline. `pnpm run test:live` calls the real provider APIs and is what [`.github/workflows/live.yml`](./.github/workflows/live.yml) runs. The same section, with the per-job coverage, is in [`CONTRIBUTING.md`](./CONTRIBUTING.md#live-tests).
+
+The workflow runs on every push to `main`, every day at 15:17 UTC (00:17 in Japan), and from the Actions tab (`workflow_dispatch`, optionally one backend). It has no `pull_request` trigger, so a pull request from a fork never receives these secrets. Each backend is its own job. A missing secret skips that job with a notice and a green result.
+
+Keys are read from the environment, which on GitHub Actions is filled only from repository secrets (Settings → Secrets and variables → Actions). Nothing in the repo stores a key. `.env` and `.env.local` are gitignored.
+
+| GitHub secret | Used by | Where to get it |
+| --- | --- | --- |
+| `TYPESAFE_API_KEY` | `@askif/jev`. `@typesafe-ai/sdk` reads this name when `jev()` is called without `apiKey`. | A TypeSafe account. Create a key at [console.typesafe.ai/keys](https://console.typesafe.ai/keys). |
+| `CLOUDFLARE_ACCOUNT_ID` | `@askif/clef`. `clef()` reads this name. | The Cloudflare account that owns Workers AI. It is the id in `https://dash.cloudflare.com/<account-id>`. |
+| `CLOUDFLARE_API_TOKEN` | `@askif/clef`. `clef()` reads this name. | A Cloudflare API token with the Workers AI permission. Create one at [dash.cloudflare.com/profile/api-tokens](https://dash.cloudflare.com/profile/api-tokens) (the Workers AI template). |
+| `OPENAI_API_KEY` | `@askif/openai`. The `openai` SDK reads this name when `openai()` is called without `apiKey`. | An OpenAI platform account. Create a key at [platform.openai.com/api-keys](https://platform.openai.com/api-keys). |
+| `OPENROUTER_API_KEY` | Jev pointed at OpenRouter. The live test passes it as `jev({ apiKey, baseURL: "https://openrouter.ai/api" })`. The TypeSafe SDK does not read this name itself. | An OpenRouter account. Create a key at [openrouter.ai/keys](https://openrouter.ai/keys). |
+
+Locally, export the variables (or load a gitignored env file in your shell) and run `pnpm run test:live`. A backend whose variable is unset is reported as skipped, and the command exits 0.
 
 ## License
 
