@@ -53,7 +53,7 @@ the same interleaved script); in that run the other backends' medians for the sa
 - **Output tokens:** `clef` produces none. `jev` reports about 21 per question and `openai` 16 for its one yes/no.
   Whether they are billed depends on the provider; this repo does not record prices for `jev` or `openai`.
 - **Long state:** with ~3.6k tokens of text, input tokens are about the same for `clef` and `jev` (3,786 vs 3,766).
-- **Price:** only `clef` ($0.24 per 1M input tokens) and `clef-flash` ($0.09) have list prices recorded in
+- **Price:** only `clef` ($0.24 per 1M input tokens) and `clef-flash` ($0.038) have list prices recorded in
   [the clef README](../packages/clef/README.md#cost-and-latency); check the other providers' pages.
 
 ## Caveats

@@ -46,7 +46,7 @@ export default {
 
 ## Limits
 
-1–64 questions per request (askif splits larger batches; its own `maxBatchSize` defaults to 32, so raise it in `createAsk` to use all 64), 2–255 options per `switch`, 2–10 levels per `score`, a 65,536-token context (long text state is truncated by Clef).
+1–64 questions per request (askif splits larger batches; its own `maxBatchSize` defaults to 32, so raise it in `createAsk` to use all 64), 2–255 options per `switch`, 2–10 levels per `score`. Hosted `clef` has a 65,536-token context; hosted `clef-flash` has 24,576 (checked 2026-10-26). Long text is truncated by Clef.
 
 ## Images
 
@@ -105,14 +105,14 @@ row, one after another, over a reused connection. "Questions" are a mix of yes/n
   (3,786 + 15 x 85, derived from the rows above), not the 60k of sixteen separate requests.
 - An image adds about **55** tokens at 128x128, **590** at 960x653 and **890** at 960x960, so roughly one token per 1,000 pixels
   at the sizes where that stops being a rounding error. Four 960 px images came to 2,680.
-- The 65,536-token context is not a practical limit for questions: 64 questions about a short text are about 5.6k tokens.
+- Neither context window is a practical limit for questions: 64 questions about a short text are about 5.6k tokens, under `clef-flash`'s 24,576 as well as `clef`'s 65,536.
 
 **Price** (Cloudflare's list prices, input tokens only; check [the model pages](https://developers.cloudflare.com/workers-ai/models/clef/) for current ones)
 
 | | per 1M input tokens | one short question (~170 tokens) | 64 questions in one request (~5.6k) | one 960x960 image (~1.1k) |
 | --- | --- | --- | --- | --- |
 | `clef` | $0.24 | $0.00004 ($0.04 per 1,000 calls) | $0.0013 | $0.00025 |
-| `clef-flash` | $0.09 | $0.000015 ($0.015 per 1,000 calls) | $0.0005 | $0.0001 |
+| `clef-flash` | $0.038 | $0.0000065 ($0.0065 per 1,000 calls) | $0.00021 | $0.000042 |
 
 **Latency**
 - `clef` answers in roughly **0.6-1.0 s** for text and **0.9-1.7 s** with images. `clef-flash` is roughly **0.2-0.4 s** (up to ~0.45 s with four images).

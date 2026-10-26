@@ -14,6 +14,7 @@ test("the TypeSafe backend sends and reads the System One format", async () => {
   const client = new TypeSafeClient({
     apiKey: "test",
     retry: { maxRetries: 0 },
+    compression: false,
     fetch: async (_url, init) => {
       const body: Json = JSON.parse(String(init?.body));
       bodies.push(body);
@@ -76,6 +77,7 @@ test("matches the shared System One contract (same fixture as @askif/clef)", asy
   const client = new TypeSafeClient({
     apiKey: "test",
     retry: { maxRetries: 0 },
+    compression: false,
     fetch: async (_url, init) => {
       bodies.push(JSON.parse(String(init?.body)));
       return new Response(
@@ -110,6 +112,7 @@ const clientFor = (answers: Json, bodies: Json[]): TypeSafeClient =>
   new TypeSafeClient({
     apiKey: "test",
     retry: { maxRetries: 0 },
+    compression: false,
     fetch: async (_url, init) => {
       bodies.push(JSON.parse(String(init?.body)));
       return new Response(JSON.stringify({ model: "jev-1.13.0", answers, usage: { input_tokens: 1, output_tokens: 0 } }), {
