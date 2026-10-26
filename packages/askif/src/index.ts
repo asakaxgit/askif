@@ -9,6 +9,8 @@ export {
   effectiveProtection,
   looksInjected,
   UNTRUSTED_IMAGE_CHARS,
+  UNTRUSTED_IMAGE_COUNT,
+  UNTRUSTED_IMAGE_TOTAL_CHARS,
   reduceDescription,
   reduceState,
   sanitizeText,

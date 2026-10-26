@@ -4,6 +4,8 @@ import {
   DEFAULT_PROTECTION,
   HIDDEN_CHARS,
   UNTRUSTED_IMAGE_CHARS,
+  UNTRUSTED_IMAGE_COUNT,
+  UNTRUSTED_IMAGE_TOTAL_CHARS,
   createAsk,
   effectiveProtection,
   extractImages,
@@ -133,6 +135,19 @@ test("auto mode keeps a standard data URL and refuses a bad one with a short mar
   assert.equal(longExplicit, "[refused image: 60000 chars]");
   assert.equal(longExplicit.includes("AAAA"), false);
 
+  const hidden = "data:image/png;base64,\u200b\u202eINJECT <!-- hidden comment -->";
+  const hiddenExplicit = reduceState(hidden, { ...DEFAULT_PROTECTION, images: "explicit" });
+  assert.equal(typeof hiddenExplicit, "string");
+  if (typeof hiddenExplicit !== "string") throw new Error("expected a string");
+  assert.equal(hiddenExplicit.includes("\u200b"), false);
+  assert.equal(hiddenExplicit.includes("\u202e"), false);
+  assert.equal(hiddenExplicit.includes("hidden comment"), false);
+  assert.equal(hiddenExplicit.includes("<!--"), false);
+  assert.equal(hiddenExplicit.includes("INJECT"), true);
+  const hiddenPayload = hidden.length - "data:image/png;base64,".length;
+  assert.equal(reduceState(hidden, DEFAULT_PROTECTION), `[refused image: ${hiddenPayload} chars]`);
+  assert.equal(String(reduceState(hidden, DEFAULT_PROTECTION)).includes("INJECT"), false);
+
   const wrapped = "data:image/png;base64,AAAA\nBBBB";
   assert.equal(reduceState(wrapped, DEFAULT_PROTECTION), "[refused image: 9 chars]");
 });
@@ -207,6 +222,59 @@ test("image() over the string cap is sent intact; look-alikes become a marker", 
     assert.equal(isImage(sent), true);
     if (isImage(sent)) assert.equal(sent.source.data, overCap.source.data);
   }
+});
+
+test("untrusted images share a character budget and a count, and explicit mode does not lift look-alikes", async () => {
+  const payload = "A".repeat(UNTRUSTED_IMAGE_CHARS);
+  const batch = Array.from({ length: 5 }, () => ({ content_type: "image/png", base64: payload }));
+  const reduced = reduceState(batch, DEFAULT_PROTECTION);
+  assert.ok(Array.isArray(reduced));
+  assert.equal(reduced[0], batch[0]);
+  assert.equal(reduced[3], batch[3]);
+  assert.equal(reduced[4], `[refused image: ${UNTRUSTED_IMAGE_CHARS} chars]`);
+  assert.equal(extractImages(reduced).images.length, 4);
+  assert.ok(UNTRUSTED_IMAGE_CHARS * 4 <= UNTRUSTED_IMAGE_TOTAL_CHARS);
+
+  const tiny = { content_type: "image/png", base64: "AAAA" };
+  const many = Array.from({ length: UNTRUSTED_IMAGE_COUNT + 1 }, () => ({ ...tiny }));
+  const counted = reduceState(many, DEFAULT_PROTECTION);
+  assert.ok(Array.isArray(counted));
+  assert.equal(counted[UNTRUSTED_IMAGE_COUNT - 1], many[UNTRUSTED_IMAGE_COUNT - 1]);
+  assert.equal(counted[UNTRUSTED_IMAGE_COUNT], "[refused image: 4 chars]");
+  assert.equal(extractImages(counted).images.length, UNTRUSTED_IMAGE_COUNT);
+
+  const trusted = Array.from({ length: UNTRUSTED_IMAGE_COUNT + 1 }, () => image("AAAA", "image/png"));
+  const kept = reduceState(trusted, DEFAULT_PROTECTION);
+  assert.deepEqual(kept, trusted);
+
+  const look = {
+    type: "image",
+    source: { kind: "base64", mediaType: "image/png", data: "iVBORw0KGgo=" },
+    note: "a\u200bb <!-- hide -->",
+  };
+  const explicit = reduceState(look, { ...DEFAULT_PROTECTION, images: "explicit" });
+  assert.ok(isRecord(explicit));
+  assert.equal(explicit["note"], "ab ");
+  assert.equal(extractImages(explicit, { only: "image" }).images.length, 0);
+  assert.equal(extractImages(reduceState(look, DEFAULT_PROTECTION)).images.length, 1);
+
+  const longLook = {
+    type: "image",
+    source: { kind: "base64", mediaType: "image/png", data: "A".repeat(60_000) },
+  };
+  assert.equal(
+    reduceState(longLook, { ...DEFAULT_PROTECTION, images: "explicit" }),
+    "[refused image: 60000 chars]",
+  );
+
+  let seen: State | undefined;
+  const backend = mock((_question, state) => {
+    seen = state;
+    return { kind: "yesno", probability: 0.2 };
+  });
+  const ask = createAsk({ backend, protection: { images: "explicit" } });
+  await ask.if({ p: look }, "x").else(() => {});
+  assert.equal(extractImages(seen ?? null, { only: "image" }).images.length, 0);
 });
 
 test("effectiveProtection treats false as off and a partial as a merge", () => {

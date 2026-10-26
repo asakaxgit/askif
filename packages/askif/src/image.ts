@@ -120,6 +120,8 @@ export const image = (input: Uint8Array | string, mediaType?: string): Image => 
     throw makeAskError("UNSUPPORTED_INPUT", "The image data is empty or not valid base64.");
   }
   const made: Image = { type: "image", source: { kind: "base64", mediaType: type.toLowerCase(), data } };
+  Object.freeze(made.source);
+  Object.freeze(made);
   trustedImages.add(made);
   return made;
 };
@@ -146,8 +148,9 @@ export type ExtractImagesOptions = {
    */
   readonly from?: number;
   /**
-   * `"image"` lifts only `image()` values. Data-URL strings and `{ content_type, base64 }`
-   * objects stay text. Omit it for today's behaviour.
+   * `"image"` lifts only values `image()` returned. A look-alike stays in the state as text.
+   * Data-URL strings and `{ content_type, base64 }` objects stay text either way.
+   * Omit it for today's behaviour.
    */
   readonly only?: "image";
 };
@@ -176,7 +179,9 @@ export const extractImages = (
     }
     if (Array.isArray(value)) return value.map(walk);
     if (value !== null && typeof value === "object") {
-      if (isImage(value)) return placeholder(value.source.mediaType, value.source.data);
+      if (isImage(value) && (!explicit || isTrustedImage(value))) {
+        return placeholder(value.source.mediaType, value.source.data);
+      }
       if (!explicit && isContentImage(value)) return placeholder(value.content_type, value.base64);
       return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, walk(entry)]));
     }

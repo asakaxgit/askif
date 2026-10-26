@@ -9,6 +9,19 @@ const GIF = Uint8Array.from([0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 1, 0, 1, 0]);
 const WEBP = Uint8Array.from([0x52, 0x49, 0x46, 0x46, 4, 0, 0, 0, 0x57, 0x45, 0x42, 0x50, 0x56, 0x50]);
 const b64 = (bytes: Uint8Array): string => btoa(String.fromCharCode(...bytes));
 
+test("image() freezes the object it returns", () => {
+  const photo = image(PNG);
+  assert.equal(Object.isFrozen(photo), true);
+  assert.equal(Object.isFrozen(photo.source), true);
+  assert.equal(Reflect.set(photo, "type", "text"), false);
+  assert.equal(Reflect.set(photo.source, "data", "QQ=="), false);
+  assert.equal(photo.type, "image");
+  assert.equal(photo.source.data, b64(PNG));
+  const copy = structuredClone(photo);
+  assert.equal(Object.isFrozen(copy), false);
+  assert.notEqual(copy, photo);
+});
+
 test("image() detects the format from the bytes, as bytes or as base64", () => {
   for (const [bytes, mediaType] of [
     [PNG, "image/png"],
