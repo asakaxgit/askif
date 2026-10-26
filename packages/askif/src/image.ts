@@ -35,6 +35,9 @@ export const DATA_URL = /^data:(image\/[a-z0-9.+-]+);base64,(.*)$/is;
 const STANDARD_BASE64 = /^[A-Za-z0-9+/]*={0,2}$/;
 const MEDIA_TYPE = /^image\/[a-z0-9.+-]+$/i;
 
+/** Standard base64 (no whitespace, no base64url). Protection uses this before it skips a size cap. */
+export const isStandardBase64 = (data: string): boolean => STANDARD_BASE64.test(data);
+
 /**
  * True when `value` is an image data URL whose payload is standard base64.
  * Protection uses this before it skips cleaning and the size caps.
@@ -43,8 +46,12 @@ export const isStandardImageDataUrl = (value: string): boolean => {
   const match = DATA_URL.exec(value);
   const media = match?.[1];
   const payload = match?.[2];
-  return media !== undefined && payload !== undefined && MEDIA_TYPE.test(media) && STANDARD_BASE64.test(payload);
+  return media !== undefined && payload !== undefined && MEDIA_TYPE.test(media) && isStandardBase64(payload);
 };
+
+/** Media type plus standard base64. Size is checked by the caller, which knows the cap. */
+export const isStandardImagePayload = (mediaType: string, data: string): boolean =>
+  MEDIA_TYPE.test(mediaType) && isStandardBase64(data);
 
 /**
  * Standard base64 with padding, or undefined.

@@ -1,5 +1,12 @@
 import { makeAskError } from "./errors.js";
-import { DATA_URL, extractImages, isContentImage, isImage, isStandardImageDataUrl } from "./image.js";
+import {
+  DATA_URL,
+  extractImages,
+  isContentImage,
+  isImage,
+  isStandardImageDataUrl,
+  isStandardImagePayload,
+} from "./image.js";
 import type { Description, Json, ProtectionConfig, ProtectionOverride, State } from "./types.js";
 
 /**
@@ -114,8 +121,10 @@ const imageStringCap = (p: ProtectionConfig): number => {
   return Infinity;
 };
 
+const keepPayload = (data: string, p: ProtectionConfig): boolean => data.length <= imageStringCap(p);
+
 const keepImageString = (value: string, p: ProtectionConfig): boolean =>
-  p.images === "auto" && value.length <= imageStringCap(p) && isStandardImageDataUrl(value);
+  p.images === "auto" && keepPayload(value, p) && isStandardImageDataUrl(value);
 
 const walkState = (value: Json, p: ProtectionConfig): Json => {
   if (typeof value === "string") {
@@ -127,7 +136,19 @@ const walkState = (value: Json, p: ProtectionConfig): Json => {
   }
   if (typeof value !== "object" || value === null) return value;
   if (Array.isArray(value)) return value.map((entry) => walkState(entry, p));
-  if (isImage(value) || (p.images === "auto" && isContentImage(value))) return value;
+  // Untrusted JSON can look like image() or `{ content_type, base64 }`. Same alphabet and size rule as a data URL.
+  if (isImage(value)) {
+    const data = value.source.data;
+    if (keepPayload(data, p) && isStandardImagePayload(value.source.mediaType, data)) return value;
+    const broken: Json = { ...value, source: { kind: "base64 ", mediaType: value.source.mediaType, data } };
+    return walkState(broken, p);
+  }
+  if (p.images === "auto" && isContentImage(value)) {
+    const data = value.base64;
+    if (keepPayload(data, p) && isStandardImagePayload(value.content_type, data)) return value;
+    const broken: Json = { ...value, content_type: `${value.content_type} ` };
+    return walkState(broken, p);
+  }
   return Object.fromEntries(Object.entries(value).map(([key, entry]) => [sanitizeText(key, p), walkState(entry, p)]));
 };
 
