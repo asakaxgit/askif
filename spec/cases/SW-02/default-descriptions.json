@@ -1,0 +1,71 @@
+{
+  "id": "SW-02/default-descriptions",
+  "criteria": [
+    "SW-02"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "choice",
+            "probabilities": {
+              "calm": 1,
+              "angry": 0,
+              "other": 0
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "switch",
+      "state": "hi",
+      "question": "tone?",
+      "options": [
+        {
+          "key": "calm"
+        },
+        {
+          "key": "angry"
+        },
+        {
+          "key": "other"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "backendCalls": 1,
+    "decide": [
+      {
+        "questions": [
+          {
+            "kind": "choice",
+            "instructions": "tone?",
+            "options": [
+              {
+                "key": "calm",
+                "description": null
+              },
+              {
+                "key": "angry",
+                "description": null
+              },
+              {
+                "key": "other",
+                "description": "None of the other options fit"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

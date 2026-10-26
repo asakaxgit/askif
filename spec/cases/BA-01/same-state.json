@@ -1,0 +1,126 @@
+{
+  "id": "BA-01/same-state",
+  "criteria": [
+    "BA-01"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "decide": [
+      {
+        "byKind": {
+          "yesno": {
+            "is animal": 0.9,
+            "is a vehicle": 0.2
+          },
+          "choice": {
+            "size?": {
+              "probabilities": {
+                "small": 0.2,
+                "large": 0.8
+              }
+            }
+          },
+          "scale": {
+            "cuteness?": {
+              "probabilities": [
+                0.25,
+                0.75
+              ]
+            }
+          }
+        }
+      },
+      {
+        "byKind": {
+          "yesno": {
+            "is a vehicle": 0.9
+          }
+        }
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "if",
+      "state": "dog",
+      "condition": "is animal",
+      "handlers": [
+        "then"
+      ]
+    },
+    {
+      "group": 0,
+      "op": "is",
+      "state": "dog",
+      "condition": "is a vehicle"
+    },
+    {
+      "group": 0,
+      "op": "switch",
+      "state": "dog",
+      "question": "size?",
+      "options": [
+        {
+          "key": "small"
+        },
+        {
+          "key": "large"
+        }
+      ]
+    },
+    {
+      "group": 0,
+      "op": "score",
+      "state": "dog",
+      "question": "cuteness?",
+      "levels": [
+        {
+          "key": "low"
+        },
+        {
+          "key": "high"
+        }
+      ]
+    },
+    {
+      "group": 0,
+      "op": "is",
+      "state": "car",
+      "condition": "is a vehicle"
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "branch": "then"
+      },
+      {
+        "value": false
+      },
+      {
+        "choice": "large"
+      },
+      {
+        "level": "high"
+      },
+      {
+        "value": true
+      }
+    ],
+    "backendCalls": 2,
+    "decide": [
+      {
+        "state": "dog",
+        "questionCount": 4
+      },
+      {
+        "state": "car",
+        "questionCount": 1
+      }
+    ],
+    "decideMany": []
+  }
+}

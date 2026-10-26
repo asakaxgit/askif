@@ -1,0 +1,639 @@
+public abstract interface class askif/Answer {
+}
+
+public final class askif/Ask {
+	public static final field Companion Laskif/Ask$Companion;
+	public final fun askIf (Lkotlinx/serialization/json/JsonElement;Ljava/lang/String;)Laskif/IfChain;
+	public final fun askIf (Lkotlinx/serialization/json/JsonElement;Ljava/lang/String;Laskif/IfOptions;)Laskif/IfChain;
+	public static synthetic fun askIf$default (Laskif/Ask;Lkotlinx/serialization/json/JsonElement;Ljava/lang/String;Laskif/IfOptions;ILjava/lang/Object;)Laskif/IfChain;
+	public final fun askIs (Lkotlinx/serialization/json/JsonElement;Ljava/lang/String;)Z
+	public final fun askIs (Lkotlinx/serialization/json/JsonElement;Ljava/lang/String;Laskif/IfOptions;)Z
+	public final synthetic fun askIs (Lkotlinx/serialization/json/JsonElement;Ljava/lang/String;Laskif/IfOptions;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun askIs$default (Laskif/Ask;Lkotlinx/serialization/json/JsonElement;Ljava/lang/String;Laskif/IfOptions;ILjava/lang/Object;)Z
+	public static synthetic fun askIs$default (Laskif/Ask;Lkotlinx/serialization/json/JsonElement;Ljava/lang/String;Laskif/IfOptions;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public final fun askIsAsync (Lkotlinx/serialization/json/JsonElement;Ljava/lang/String;)Ljava/util/concurrent/CompletableFuture;
+	public final fun askIsAsync (Lkotlinx/serialization/json/JsonElement;Ljava/lang/String;Laskif/IfOptions;)Ljava/util/concurrent/CompletableFuture;
+	public static synthetic fun askIsAsync$default (Laskif/Ask;Lkotlinx/serialization/json/JsonElement;Ljava/lang/String;Laskif/IfOptions;ILjava/lang/Object;)Ljava/util/concurrent/CompletableFuture;
+	public final fun askIsHandle (Lkotlinx/serialization/json/JsonElement;Ljava/lang/String;)Laskif/Handle;
+	public final fun askIsHandle (Lkotlinx/serialization/json/JsonElement;Ljava/lang/String;Laskif/IfOptions;)Laskif/Handle;
+	public static synthetic fun askIsHandle$default (Laskif/Ask;Lkotlinx/serialization/json/JsonElement;Ljava/lang/String;Laskif/IfOptions;ILjava/lang/Object;)Laskif/Handle;
+	public final fun askSwitch (Lkotlinx/serialization/json/JsonElement;Lkotlinx/serialization/json/JsonElement;)Laskif/SwitchChain;
+	public final fun askSwitch (Lkotlinx/serialization/json/JsonElement;Lkotlinx/serialization/json/JsonElement;Laskif/DecisionOptions;)Laskif/SwitchChain;
+	public static synthetic fun askSwitch$default (Laskif/Ask;Lkotlinx/serialization/json/JsonElement;Lkotlinx/serialization/json/JsonElement;Laskif/DecisionOptions;ILjava/lang/Object;)Laskif/SwitchChain;
+	public final fun batch (Lkotlin/jvm/functions/Function1;)Ljava/lang/Object;
+	public final fun batch (Lkotlinx/serialization/json/JsonElement;Lkotlin/jvm/functions/Function1;)Ljava/lang/Object;
+	public final fun configure (Laskif/ConfigPatch;)V
+	public final synthetic fun configure (Lkotlin/jvm/functions/Function1;)V
+	public static final fun create (Laskif/Backend;)Laskif/Ask;
+	public static final fun create (Laskif/Backend;Laskif/ConfigPatch;)Laskif/Ask;
+	public final fun openBatch ()Laskif/Batch;
+	public final fun probability (Lkotlinx/serialization/json/JsonElement;Ljava/lang/String;)D
+	public final fun probability (Lkotlinx/serialization/json/JsonElement;Ljava/lang/String;Laskif/IfOptions;)D
+	public final synthetic fun probability (Lkotlinx/serialization/json/JsonElement;Ljava/lang/String;Laskif/IfOptions;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun probability$default (Laskif/Ask;Lkotlinx/serialization/json/JsonElement;Ljava/lang/String;Laskif/IfOptions;ILjava/lang/Object;)D
+	public static synthetic fun probability$default (Laskif/Ask;Lkotlinx/serialization/json/JsonElement;Ljava/lang/String;Laskif/IfOptions;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public final fun probabilityAsync (Lkotlinx/serialization/json/JsonElement;Ljava/lang/String;)Ljava/util/concurrent/CompletableFuture;
+	public final fun probabilityAsync (Lkotlinx/serialization/json/JsonElement;Ljava/lang/String;Laskif/IfOptions;)Ljava/util/concurrent/CompletableFuture;
+	public static synthetic fun probabilityAsync$default (Laskif/Ask;Lkotlinx/serialization/json/JsonElement;Ljava/lang/String;Laskif/IfOptions;ILjava/lang/Object;)Ljava/util/concurrent/CompletableFuture;
+	public final fun probabilityHandle (Lkotlinx/serialization/json/JsonElement;Ljava/lang/String;)Laskif/Handle;
+	public final fun probabilityHandle (Lkotlinx/serialization/json/JsonElement;Ljava/lang/String;Laskif/IfOptions;)Laskif/Handle;
+	public static synthetic fun probabilityHandle$default (Laskif/Ask;Lkotlinx/serialization/json/JsonElement;Ljava/lang/String;Laskif/IfOptions;ILjava/lang/Object;)Laskif/Handle;
+	public final fun score (Lkotlinx/serialization/json/JsonElement;Lkotlinx/serialization/json/JsonElement;)Laskif/ScoreChain;
+	public final fun score (Lkotlinx/serialization/json/JsonElement;Lkotlinx/serialization/json/JsonElement;Laskif/DecisionOptions;)Laskif/ScoreChain;
+	public static synthetic fun score$default (Laskif/Ask;Lkotlinx/serialization/json/JsonElement;Lkotlinx/serialization/json/JsonElement;Laskif/DecisionOptions;ILjava/lang/Object;)Laskif/ScoreChain;
+}
+
+public final class askif/Ask$Companion {
+	public final fun create (Laskif/Backend;)Laskif/Ask;
+	public final fun create (Laskif/Backend;Laskif/ConfigPatch;)Laskif/Ask;
+}
+
+public final class askif/AskException : java/lang/RuntimeException {
+	public fun <init> (Laskif/ErrorCode;Ljava/lang/String;Ljava/lang/Throwable;)V
+	public synthetic fun <init> (Laskif/ErrorCode;Ljava/lang/String;Ljava/lang/Throwable;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getCode ()Laskif/ErrorCode;
+}
+
+public abstract interface class askif/Backend {
+	public abstract synthetic fun decide (Lkotlinx/serialization/json/JsonElement;Ljava/util/Map;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public synthetic fun decideMany (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun getHasDecideMany ()Z
+	public fun getLimits ()Laskif/BackendLimits;
+	public fun getMultiState ()Z
+	public abstract fun getName ()Ljava/lang/String;
+}
+
+public final class askif/BackendLimits {
+	public static final field Companion Laskif/BackendLimits$Companion;
+	public static final field NONE Laskif/BackendLimits;
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/Integer;)V
+	public fun <init> (Ljava/lang/Integer;Ljava/lang/Integer;)V
+	public fun <init> (Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;)V
+	public fun <init> (Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;)V
+	public fun <init> (Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;)V
+	public synthetic fun <init> (Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/Integer;
+	public final fun component2 ()Ljava/lang/Integer;
+	public final fun component3 ()Ljava/lang/Integer;
+	public final fun component4 ()Ljava/lang/Integer;
+	public final fun component5 ()Ljava/lang/Integer;
+	public final fun copy (Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;)Laskif/BackendLimits;
+	public static synthetic fun copy$default (Laskif/BackendLimits;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;Ljava/lang/Integer;ILjava/lang/Object;)Laskif/BackendLimits;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getMaxImages ()Ljava/lang/Integer;
+	public final fun getMaxLevels ()Ljava/lang/Integer;
+	public final fun getMaxOptions ()Ljava/lang/Integer;
+	public final fun getMaxQuestionsPerCall ()Ljava/lang/Integer;
+	public final fun getMaxStatesPerCall ()Ljava/lang/Integer;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class askif/BackendLimits$Companion {
+}
+
+public final class askif/Band {
+	public fun <init> (DD)V
+	public final fun component1 ()D
+	public final fun component2 ()D
+	public final fun copy (DD)Laskif/Band;
+	public static synthetic fun copy$default (Laskif/Band;DDILjava/lang/Object;)Laskif/Band;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getHigh ()D
+	public final fun getLow ()D
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class askif/Batch {
+	public final fun submit ()V
+}
+
+public final class askif/BoundBatch {
+	public final fun askIf (Ljava/lang/String;)Laskif/IfChain;
+	public final fun askIf (Ljava/lang/String;Laskif/IfOptions;)Laskif/IfChain;
+	public static synthetic fun askIf$default (Laskif/BoundBatch;Ljava/lang/String;Laskif/IfOptions;ILjava/lang/Object;)Laskif/IfChain;
+	public final fun askIs (Ljava/lang/String;)Laskif/Handle;
+	public final fun askIs (Ljava/lang/String;Laskif/IfOptions;)Laskif/Handle;
+	public static synthetic fun askIs$default (Laskif/BoundBatch;Ljava/lang/String;Laskif/IfOptions;ILjava/lang/Object;)Laskif/Handle;
+	public final fun askSwitch (Lkotlinx/serialization/json/JsonElement;)Laskif/SwitchChain;
+	public final fun askSwitch (Lkotlinx/serialization/json/JsonElement;Laskif/DecisionOptions;)Laskif/SwitchChain;
+	public static synthetic fun askSwitch$default (Laskif/BoundBatch;Lkotlinx/serialization/json/JsonElement;Laskif/DecisionOptions;ILjava/lang/Object;)Laskif/SwitchChain;
+	public final fun probability (Ljava/lang/String;)Laskif/Handle;
+	public final fun probability (Ljava/lang/String;Laskif/IfOptions;)Laskif/Handle;
+	public static synthetic fun probability$default (Laskif/BoundBatch;Ljava/lang/String;Laskif/IfOptions;ILjava/lang/Object;)Laskif/Handle;
+	public final fun score (Lkotlinx/serialization/json/JsonElement;)Laskif/ScoreChain;
+	public final fun score (Lkotlinx/serialization/json/JsonElement;Laskif/DecisionOptions;)Laskif/ScoreChain;
+	public static synthetic fun score$default (Laskif/BoundBatch;Lkotlinx/serialization/json/JsonElement;Laskif/DecisionOptions;ILjava/lang/Object;)Laskif/ScoreChain;
+}
+
+public final class askif/Branch : java/lang/Enum {
+	public static final field CASE Laskif/Branch;
+	public static final field ELSE Laskif/Branch;
+	public static final field ELSEIF Laskif/Branch;
+	public static final field LEVEL Laskif/Branch;
+	public static final field THEN Laskif/Branch;
+	public static final field UNSURE Laskif/Branch;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Laskif/Branch;
+	public static fun values ()[Laskif/Branch;
+}
+
+public final class askif/ChoiceAnswer : askif/Answer {
+	public fun <init> (Ljava/util/Map;)V
+	public fun <init> (Ljava/util/Map;Ljava/lang/Double;)V
+	public synthetic fun <init> (Ljava/util/Map;Ljava/lang/Double;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/util/Map;
+	public final fun component2 ()Ljava/lang/Double;
+	public final fun copy (Ljava/util/Map;Ljava/lang/Double;)Laskif/ChoiceAnswer;
+	public static synthetic fun copy$default (Laskif/ChoiceAnswer;Ljava/util/Map;Ljava/lang/Double;ILjava/lang/Object;)Laskif/ChoiceAnswer;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getConfidence ()Ljava/lang/Double;
+	public final fun getProbabilities ()Ljava/util/Map;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class askif/ChoiceOption {
+	public fun <init> (Ljava/lang/String;Lkotlinx/serialization/json/JsonElement;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Lkotlinx/serialization/json/JsonElement;
+	public final fun copy (Ljava/lang/String;Lkotlinx/serialization/json/JsonElement;)Laskif/ChoiceOption;
+	public static synthetic fun copy$default (Laskif/ChoiceOption;Ljava/lang/String;Lkotlinx/serialization/json/JsonElement;ILjava/lang/Object;)Laskif/ChoiceOption;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getDescription ()Lkotlinx/serialization/json/JsonElement;
+	public final fun getKey ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class askif/ChoiceQuestion : askif/Question {
+	public fun <init> (Lkotlinx/serialization/json/JsonElement;Ljava/util/List;)V
+	public final fun component1 ()Lkotlinx/serialization/json/JsonElement;
+	public final fun component2 ()Ljava/util/List;
+	public final fun copy (Lkotlinx/serialization/json/JsonElement;Ljava/util/List;)Laskif/ChoiceQuestion;
+	public static synthetic fun copy$default (Laskif/ChoiceQuestion;Lkotlinx/serialization/json/JsonElement;Ljava/util/List;ILjava/lang/Object;)Laskif/ChoiceQuestion;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getInstructions ()Lkotlinx/serialization/json/JsonElement;
+	public fun getKind ()Ljava/lang/String;
+	public final fun getOptions ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class askif/ConfigPatch {
+	public fun <init> ()V
+	public final fun backend (Laskif/Backend;)Laskif/ConfigPatch;
+	public final fun maxBatchSize (I)Laskif/ConfigPatch;
+	public final fun maxStatesPerBatch (I)Laskif/ConfigPatch;
+	public final fun minConfidence (D)Laskif/ConfigPatch;
+	public final fun threshold (D)Laskif/ConfigPatch;
+	public final fun unsureBand (Laskif/Band;)Laskif/ConfigPatch;
+}
+
+public final class askif/Decision {
+	public static final field INSTANCE Laskif/Decision;
+	public static final fun confidenceOf (Ljava/util/List;)D
+}
+
+public final class askif/DecisionItem {
+	public fun <init> (Ljava/lang/String;Lkotlinx/serialization/json/JsonElement;Laskif/Question;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Lkotlinx/serialization/json/JsonElement;
+	public final fun component3 ()Laskif/Question;
+	public final fun copy (Ljava/lang/String;Lkotlinx/serialization/json/JsonElement;Laskif/Question;)Laskif/DecisionItem;
+	public static synthetic fun copy$default (Laskif/DecisionItem;Ljava/lang/String;Lkotlinx/serialization/json/JsonElement;Laskif/Question;ILjava/lang/Object;)Laskif/DecisionItem;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getId ()Ljava/lang/String;
+	public final fun getQuestion ()Laskif/Question;
+	public final fun getState ()Lkotlinx/serialization/json/JsonElement;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class askif/DecisionOptions {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/Double;Laskif/Backend;)V
+	public final fun backend (Laskif/Backend;)Laskif/DecisionOptions;
+	public final fun getBackend ()Laskif/Backend;
+	public final fun getMinConfidence ()Ljava/lang/Double;
+	public final fun minConfidence (D)Laskif/DecisionOptions;
+}
+
+public final class askif/ErrorCode : java/lang/Enum {
+	public static final field BACKEND_FAILED Laskif/ErrorCode;
+	public static final field BACKEND_UNAVAILABLE Laskif/ErrorCode;
+	public static final field BAD_RESPONSE Laskif/ErrorCode;
+	public static final field CHAIN_STARTED Laskif/ErrorCode;
+	public static final field INVALID_QUESTION Laskif/ErrorCode;
+	public static final field UNSUPPORTED_INPUT Laskif/ErrorCode;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Laskif/ErrorCode;
+	public static fun values ()[Laskif/ErrorCode;
+}
+
+public final class askif/Handle {
+	public final fun await ()Ljava/lang/Object;
+	public final synthetic fun await (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun cancel ()V
+	public final fun toCompletableFuture ()Ljava/util/concurrent/CompletableFuture;
+}
+
+public abstract interface class askif/Handler {
+	public abstract fun accept (Ljava/lang/Object;)V
+}
+
+public final class askif/IfChain {
+	public final fun elseIf (Ljava/lang/String;)Laskif/IfChain;
+	public final fun elseIf (Ljava/lang/String;Laskif/Handler;)Laskif/IfChain;
+	public final fun elseIf (Ljava/lang/String;Laskif/Handler;Laskif/IfOptions;)Laskif/IfChain;
+	public final fun elseIf (Ljava/lang/String;Laskif/IfOptions;)Laskif/IfChain;
+	public final fun handle ()Laskif/Handle;
+	public final fun orElse (Laskif/Handler;)Laskif/IfChain;
+	public final fun run ()Laskif/IfResult;
+	public final synthetic fun run (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun runAsync ()Ljava/util/concurrent/CompletableFuture;
+	public final fun then (Laskif/Handler;)Laskif/IfChain;
+	public final fun unsure (Laskif/Handler;)Laskif/IfChain;
+	public final fun unsure (Laskif/Handler;Laskif/UnsureMode;)Laskif/IfChain;
+}
+
+public final class askif/IfElseIfResult : askif/IfResult {
+	public fun <init> (ILjava/lang/String;DLjava/util/List;Ljava/util/List;)V
+	public final fun component1 ()I
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()D
+	public final fun component4 ()Ljava/util/List;
+	public final fun component5 ()Ljava/util/List;
+	public final fun copy (ILjava/lang/String;DLjava/util/List;Ljava/util/List;)Laskif/IfElseIfResult;
+	public static synthetic fun copy$default (Laskif/IfElseIfResult;ILjava/lang/String;DLjava/util/List;Ljava/util/List;ILjava/lang/Object;)Laskif/IfElseIfResult;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun getBranch ()Laskif/Branch;
+	public final fun getCondition ()Ljava/lang/String;
+	public final fun getIndex ()I
+	public fun getProbabilities ()Ljava/util/List;
+	public final fun getProbability ()D
+	public fun getUnsureIndexes ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class askif/IfElseResult : askif/IfResult {
+	public fun <init> (Ljava/util/List;Ljava/util/List;)V
+	public final fun component1 ()Ljava/util/List;
+	public final fun component2 ()Ljava/util/List;
+	public final fun copy (Ljava/util/List;Ljava/util/List;)Laskif/IfElseResult;
+	public static synthetic fun copy$default (Laskif/IfElseResult;Ljava/util/List;Ljava/util/List;ILjava/lang/Object;)Laskif/IfElseResult;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun getBranch ()Laskif/Branch;
+	public fun getProbabilities ()Ljava/util/List;
+	public fun getUnsureIndexes ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class askif/IfOptions {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/Double;Laskif/Band;Laskif/YesNoCriteria;Laskif/Backend;)V
+	public final fun backend (Laskif/Backend;)Laskif/IfOptions;
+	public final fun criteria (Laskif/YesNoCriteria;)Laskif/IfOptions;
+	public final fun getBackend ()Laskif/Backend;
+	public final fun getCriteria ()Laskif/YesNoCriteria;
+	public final fun getThreshold ()Ljava/lang/Double;
+	public final fun getUnsureBand ()Laskif/Band;
+	public final fun threshold (D)Laskif/IfOptions;
+	public final fun unsureBand (Laskif/Band;)Laskif/IfOptions;
+}
+
+public abstract interface class askif/IfResult {
+	public abstract fun getBranch ()Laskif/Branch;
+	public abstract fun getProbabilities ()Ljava/util/List;
+	public abstract fun getUnsureIndexes ()Ljava/util/List;
+}
+
+public final class askif/IfThenResult : askif/IfResult {
+	public fun <init> (Ljava/lang/String;DLjava/util/List;Ljava/util/List;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()D
+	public final fun component3 ()Ljava/util/List;
+	public final fun component4 ()Ljava/util/List;
+	public final fun copy (Ljava/lang/String;DLjava/util/List;Ljava/util/List;)Laskif/IfThenResult;
+	public static synthetic fun copy$default (Laskif/IfThenResult;Ljava/lang/String;DLjava/util/List;Ljava/util/List;ILjava/lang/Object;)Laskif/IfThenResult;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun getBranch ()Laskif/Branch;
+	public final fun getCondition ()Ljava/lang/String;
+	public final fun getIndex ()I
+	public fun getProbabilities ()Ljava/util/List;
+	public final fun getProbability ()D
+	public fun getUnsureIndexes ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class askif/IfUnsureResult : askif/IfResult {
+	public fun <init> (ILjava/lang/String;DLjava/util/List;Ljava/util/List;)V
+	public final fun component1 ()I
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()D
+	public final fun component4 ()Ljava/util/List;
+	public final fun component5 ()Ljava/util/List;
+	public final fun copy (ILjava/lang/String;DLjava/util/List;Ljava/util/List;)Laskif/IfUnsureResult;
+	public static synthetic fun copy$default (Laskif/IfUnsureResult;ILjava/lang/String;DLjava/util/List;Ljava/util/List;ILjava/lang/Object;)Laskif/IfUnsureResult;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun getBranch ()Laskif/Branch;
+	public final fun getCondition ()Ljava/lang/String;
+	public final fun getIndex ()I
+	public fun getProbabilities ()Ljava/util/List;
+	public final fun getProbability ()D
+	public fun getUnsureIndexes ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class askif/ItemResult {
+	public static final field Companion Laskif/ItemResult$Companion;
+	public static fun answered (Ljava/lang/String;Laskif/Answer;)Laskif/ItemResult;
+	public static fun failed (Ljava/lang/String;Ljava/lang/Throwable;)Laskif/ItemResult;
+	public abstract fun getId ()Ljava/lang/String;
+}
+
+public final class askif/ItemResult$Answered : askif/ItemResult {
+	public fun <init> (Ljava/lang/String;Laskif/Answer;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Laskif/Answer;
+	public final fun copy (Ljava/lang/String;Laskif/Answer;)Laskif/ItemResult$Answered;
+	public static synthetic fun copy$default (Laskif/ItemResult$Answered;Ljava/lang/String;Laskif/Answer;ILjava/lang/Object;)Laskif/ItemResult$Answered;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAnswer ()Laskif/Answer;
+	public fun getId ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class askif/ItemResult$Companion {
+	public final fun answered (Ljava/lang/String;Laskif/Answer;)Laskif/ItemResult;
+	public final fun failed (Ljava/lang/String;Ljava/lang/Throwable;)Laskif/ItemResult;
+}
+
+public final class askif/ItemResult$Failed : askif/ItemResult {
+	public fun <init> (Ljava/lang/String;Ljava/lang/Throwable;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/Throwable;
+	public final fun copy (Ljava/lang/String;Ljava/lang/Throwable;)Laskif/ItemResult$Failed;
+	public static synthetic fun copy$default (Laskif/ItemResult$Failed;Ljava/lang/String;Ljava/lang/Throwable;ILjava/lang/Object;)Laskif/ItemResult$Failed;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getError ()Ljava/lang/Throwable;
+	public fun getId ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract class askif/JavaBackend : askif/Backend {
+	public fun <init> (Ljava/lang/String;)V
+	public final fun decide (Lkotlinx/serialization/json/JsonElement;Ljava/util/Map;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun decideAsync (Lkotlinx/serialization/json/JsonElement;Ljava/util/Map;)Ljava/util/concurrent/CompletableFuture;
+	public final fun decideMany (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun decideManyAsync (Ljava/util/List;)Ljava/util/concurrent/CompletableFuture;
+	public final fun getHasDecideMany ()Z
+	public final fun getLimits ()Laskif/BackendLimits;
+	public final fun getMultiState ()Z
+	public final fun getName ()Ljava/lang/String;
+	public final fun setHasDecideMany (Z)Laskif/JavaBackend;
+	public final fun setLimits (Laskif/BackendLimits;)Laskif/JavaBackend;
+	public final fun setMultiState (Z)Laskif/JavaBackend;
+}
+
+public final class askif/MockBackend : askif/Backend {
+	public static final field Companion Laskif/MockBackend$Companion;
+	public synthetic fun <init> (Laskif/Responder;ZZLaskif/BackendLimits;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public static final fun create (Laskif/Responder;)Laskif/MockBackend;
+	public static final fun create (Laskif/Responder;ZZLaskif/BackendLimits;)Laskif/MockBackend;
+	public fun decide (Lkotlinx/serialization/json/JsonElement;Ljava/util/Map;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun decideMany (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun getHasDecideMany ()Z
+	public fun getLimits ()Laskif/BackendLimits;
+	public fun getMultiState ()Z
+	public fun getName ()Ljava/lang/String;
+}
+
+public final class askif/MockBackend$Companion {
+	public final fun create (Laskif/Responder;)Laskif/MockBackend;
+	public final fun create (Laskif/Responder;ZZLaskif/BackendLimits;)Laskif/MockBackend;
+}
+
+public abstract interface class askif/Question {
+	public abstract fun getKind ()Ljava/lang/String;
+}
+
+public abstract interface class askif/QuestionResult {
+	public static final field Companion Laskif/QuestionResult$Companion;
+	public static fun answered (Laskif/Answer;)Laskif/QuestionResult;
+	public static fun failed (Ljava/lang/Throwable;)Laskif/QuestionResult;
+}
+
+public final class askif/QuestionResult$Answered : askif/QuestionResult {
+	public fun <init> (Laskif/Answer;)V
+	public final fun component1 ()Laskif/Answer;
+	public final fun copy (Laskif/Answer;)Laskif/QuestionResult$Answered;
+	public static synthetic fun copy$default (Laskif/QuestionResult$Answered;Laskif/Answer;ILjava/lang/Object;)Laskif/QuestionResult$Answered;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAnswer ()Laskif/Answer;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class askif/QuestionResult$Companion {
+	public final fun answered (Laskif/Answer;)Laskif/QuestionResult;
+	public final fun failed (Ljava/lang/Throwable;)Laskif/QuestionResult;
+}
+
+public final class askif/QuestionResult$Failed : askif/QuestionResult {
+	public fun <init> (Ljava/lang/Throwable;)V
+	public final fun component1 ()Ljava/lang/Throwable;
+	public final fun copy (Ljava/lang/Throwable;)Laskif/QuestionResult$Failed;
+	public static synthetic fun copy$default (Laskif/QuestionResult$Failed;Ljava/lang/Throwable;ILjava/lang/Object;)Laskif/QuestionResult$Failed;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getError ()Ljava/lang/Throwable;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class askif/Ranked {
+	public fun <init> (Ljava/lang/String;D)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()D
+	public final fun copy (Ljava/lang/String;D)Laskif/Ranked;
+	public static synthetic fun copy$default (Laskif/Ranked;Ljava/lang/String;DILjava/lang/Object;)Laskif/Ranked;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getKey ()Ljava/lang/String;
+	public final fun getProbability ()D
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class askif/Responder {
+	public abstract fun answer (Lkotlinx/serialization/json/JsonElement;Laskif/Question;)Laskif/QuestionResult;
+}
+
+public final class askif/ScaleAnswer : askif/Answer {
+	public fun <init> (Ljava/util/List;)V
+	public fun <init> (Ljava/util/List;Ljava/lang/Double;)V
+	public synthetic fun <init> (Ljava/util/List;Ljava/lang/Double;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/util/List;
+	public final fun component2 ()Ljava/lang/Double;
+	public final fun copy (Ljava/util/List;Ljava/lang/Double;)Laskif/ScaleAnswer;
+	public static synthetic fun copy$default (Laskif/ScaleAnswer;Ljava/util/List;Ljava/lang/Double;ILjava/lang/Object;)Laskif/ScaleAnswer;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getConfidence ()Ljava/lang/Double;
+	public final fun getProbabilities ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class askif/ScaleQuestion : askif/Question {
+	public fun <init> (Lkotlinx/serialization/json/JsonElement;Ljava/util/List;)V
+	public final fun component1 ()Lkotlinx/serialization/json/JsonElement;
+	public final fun component2 ()Ljava/util/List;
+	public final fun copy (Lkotlinx/serialization/json/JsonElement;Ljava/util/List;)Laskif/ScaleQuestion;
+	public static synthetic fun copy$default (Laskif/ScaleQuestion;Lkotlinx/serialization/json/JsonElement;Ljava/util/List;ILjava/lang/Object;)Laskif/ScaleQuestion;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getInstructions ()Lkotlinx/serialization/json/JsonElement;
+	public fun getKind ()Ljava/lang/String;
+	public final fun getLevels ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class askif/ScoreChain {
+	public final fun handle ()Laskif/Handle;
+	public final fun level (Ljava/lang/String;)Laskif/ScoreChain;
+	public final fun level (Ljava/lang/String;Laskif/Handler;)Laskif/ScoreChain;
+	public final fun level (Ljava/lang/String;Lkotlinx/serialization/json/JsonElement;)Laskif/ScoreChain;
+	public final fun level (Ljava/lang/String;Lkotlinx/serialization/json/JsonElement;Laskif/Handler;)Laskif/ScoreChain;
+	public final fun run ()Laskif/ScoreResult;
+	public final synthetic fun run (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun runAsync ()Ljava/util/concurrent/CompletableFuture;
+	public final fun unsure (Laskif/Handler;)Laskif/ScoreChain;
+}
+
+public final class askif/ScoreResult {
+	public fun <init> (Laskif/Branch;Ljava/lang/String;IDDDLjava/util/List;)V
+	public final fun component1 ()Laskif/Branch;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()I
+	public final fun component4 ()D
+	public final fun component5 ()D
+	public final fun component6 ()D
+	public final fun component7 ()Ljava/util/List;
+	public final fun copy (Laskif/Branch;Ljava/lang/String;IDDDLjava/util/List;)Laskif/ScoreResult;
+	public static synthetic fun copy$default (Laskif/ScoreResult;Laskif/Branch;Ljava/lang/String;IDDDLjava/util/List;ILjava/lang/Object;)Laskif/ScoreResult;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getBranch ()Laskif/Branch;
+	public final fun getConfidence ()D
+	public final fun getIndex ()I
+	public final fun getLevel ()Ljava/lang/String;
+	public final fun getNormalized ()D
+	public final fun getProbabilities ()Ljava/util/List;
+	public final fun getScore ()D
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class askif/States {
+	public static final field INSTANCE Laskif/States;
+	public static final fun array (Ljava/util/List;)Lkotlinx/serialization/json/JsonElement;
+	public static final fun obj (Ljava/util/Map;)Lkotlinx/serialization/json/JsonElement;
+	public static final fun of (D)Lkotlinx/serialization/json/JsonElement;
+	public static final fun of (I)Lkotlinx/serialization/json/JsonElement;
+	public static final fun of (J)Lkotlinx/serialization/json/JsonElement;
+	public static final fun of (Ljava/lang/String;)Lkotlinx/serialization/json/JsonElement;
+	public static final fun of (Z)Lkotlinx/serialization/json/JsonElement;
+	public static final fun ofNull ()Lkotlinx/serialization/json/JsonElement;
+	public static final fun parse (Ljava/lang/String;)Lkotlinx/serialization/json/JsonElement;
+}
+
+public final class askif/SwitchChain {
+	public final fun handle ()Laskif/Handle;
+	public final fun option (Ljava/lang/String;)Laskif/SwitchChain;
+	public final fun option (Ljava/lang/String;Laskif/Handler;)Laskif/SwitchChain;
+	public final fun option (Ljava/lang/String;Lkotlinx/serialization/json/JsonElement;)Laskif/SwitchChain;
+	public final fun option (Ljava/lang/String;Lkotlinx/serialization/json/JsonElement;Laskif/Handler;)Laskif/SwitchChain;
+	public final fun other ()Laskif/SwitchChain;
+	public final fun other (Laskif/Handler;)Laskif/SwitchChain;
+	public final fun other (Lkotlinx/serialization/json/JsonElement;)Laskif/SwitchChain;
+	public final fun other (Lkotlinx/serialization/json/JsonElement;Laskif/Handler;)Laskif/SwitchChain;
+	public final fun run ()Laskif/SwitchResult;
+	public final synthetic fun run (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun runAsync ()Ljava/util/concurrent/CompletableFuture;
+	public final fun unsure (Laskif/Handler;)Laskif/SwitchChain;
+}
+
+public final class askif/SwitchResult {
+	public fun <init> (Laskif/Branch;Ljava/lang/String;DLjava/util/List;)V
+	public final fun component1 ()Laskif/Branch;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()D
+	public final fun component4 ()Ljava/util/List;
+	public final fun copy (Laskif/Branch;Ljava/lang/String;DLjava/util/List;)Laskif/SwitchResult;
+	public static synthetic fun copy$default (Laskif/SwitchResult;Laskif/Branch;Ljava/lang/String;DLjava/util/List;ILjava/lang/Object;)Laskif/SwitchResult;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getBranch ()Laskif/Branch;
+	public final fun getChoice ()Ljava/lang/String;
+	public final fun getConfidence ()D
+	public final fun getRanking ()Ljava/util/List;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class askif/UnsureMode : java/lang/Enum {
+	public static final field SKIP Laskif/UnsureMode;
+	public static final field STOP Laskif/UnsureMode;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Laskif/UnsureMode;
+	public static fun values ()[Laskif/UnsureMode;
+}
+
+public final class askif/YesNoAnswer : askif/Answer {
+	public fun <init> (D)V
+	public final fun component1 ()D
+	public final fun copy (D)Laskif/YesNoAnswer;
+	public static synthetic fun copy$default (Laskif/YesNoAnswer;DILjava/lang/Object;)Laskif/YesNoAnswer;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getProbability ()D
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class askif/YesNoCriteria {
+	public fun <init> ()V
+	public fun <init> (Lkotlinx/serialization/json/JsonElement;)V
+	public fun <init> (Lkotlinx/serialization/json/JsonElement;Lkotlinx/serialization/json/JsonElement;)V
+	public synthetic fun <init> (Lkotlinx/serialization/json/JsonElement;Lkotlinx/serialization/json/JsonElement;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Lkotlinx/serialization/json/JsonElement;
+	public final fun component2 ()Lkotlinx/serialization/json/JsonElement;
+	public final fun copy (Lkotlinx/serialization/json/JsonElement;Lkotlinx/serialization/json/JsonElement;)Laskif/YesNoCriteria;
+	public static synthetic fun copy$default (Laskif/YesNoCriteria;Lkotlinx/serialization/json/JsonElement;Lkotlinx/serialization/json/JsonElement;ILjava/lang/Object;)Laskif/YesNoCriteria;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getNo ()Lkotlinx/serialization/json/JsonElement;
+	public final fun getYes ()Lkotlinx/serialization/json/JsonElement;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class askif/YesNoQuestion : askif/Question {
+	public fun <init> (Lkotlinx/serialization/json/JsonElement;)V
+	public fun <init> (Lkotlinx/serialization/json/JsonElement;Laskif/YesNoCriteria;)V
+	public synthetic fun <init> (Lkotlinx/serialization/json/JsonElement;Laskif/YesNoCriteria;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Lkotlinx/serialization/json/JsonElement;
+	public final fun component2 ()Laskif/YesNoCriteria;
+	public final fun copy (Lkotlinx/serialization/json/JsonElement;Laskif/YesNoCriteria;)Laskif/YesNoQuestion;
+	public static synthetic fun copy$default (Laskif/YesNoQuestion;Lkotlinx/serialization/json/JsonElement;Laskif/YesNoCriteria;ILjava/lang/Object;)Laskif/YesNoQuestion;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCriteria ()Laskif/YesNoCriteria;
+	public final fun getInstructions ()Lkotlinx/serialization/json/JsonElement;
+	public fun getKind ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+

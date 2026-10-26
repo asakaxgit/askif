@@ -1,0 +1,73 @@
+{
+  "id": "PR-05/choice-description",
+  "criteria": [
+    "PR-05"
+  ],
+  "tags": [
+    "deferred"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "choice",
+            "probabilities": {
+              "ke‍y": 1,
+              "plain": 0
+            },
+            "confidence": 1
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "switch",
+      "state": "hello",
+      "question": "tone?",
+      "options": [
+        {
+          "key": "ke‍y",
+          "description": "a​b <!-- keep -->"
+        },
+        {
+          "key": "plain"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "choice": "ke‍y",
+        "flags": null
+      }
+    ],
+    "errors": [
+      null
+    ],
+    "backendCalls": 1,
+    "decide": [
+      {
+        "questions": [
+          {
+            "kind": "choice",
+            "options": [
+              {
+                "key": "ke‍y",
+                "description": "ab <!-- keep -->"
+              },
+              {
+                "key": "plain",
+                "description": null
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

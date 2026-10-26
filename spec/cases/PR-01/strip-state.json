@@ -1,0 +1,46 @@
+{
+  "id": "PR-01/strip-state",
+  "criteria": [
+    "PR-01"
+  ],
+  "tags": [
+    "deferred"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "yesno",
+            "probability": 0.9
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "is",
+      "state": "a​b <!-- hide -->",
+      "condition": "kept"
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "value": true
+      }
+    ],
+    "errors": [
+      null
+    ],
+    "backendCalls": 1,
+    "decide": [
+      {
+        "state": "ab ",
+        "questionCount": 1
+      }
+    ]
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "id": "BA-05/backend-state-cap",
+  "criteria": [
+    "BA-05",
+    "LM-02"
+  ],
+  "tags": [
+    "core"
+  ],
+  "config": {
+    "maxStatesPerBatch": 10
+  },
+  "backend": {
+    "multiState": true,
+    "hasDecideMany": true,
+    "limits": {
+      "maxStatesPerCall": 2
+    }
+  },
+  "script": {
+    "decideMany": [
+      {
+        "answers": {
+          "each": {
+            "kind": "yesno",
+            "probability": 0.5
+          }
+        }
+      },
+      {
+        "answers": {
+          "each": {
+            "kind": "yesno",
+            "probability": 0.5
+          }
+        }
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "is",
+      "statePrefix": "s",
+      "condition": "ok",
+      "count": 4
+    }
+  ],
+  "expect": {
+    "backendCalls": 2,
+    "decide": [],
+    "decideMany": [
+      {
+        "itemCount": 2
+      },
+      {
+        "itemCount": 2
+      }
+    ]
+  }
+}

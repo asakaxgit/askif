@@ -1,0 +1,51 @@
+{
+  "id": "IF-03/above-band",
+  "criteria": [
+    "IF-03"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "yesno",
+            "probability": 0.81
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "if",
+      "state": "x",
+      "condition": "edge",
+      "handlers": [
+        "then",
+        "else",
+        "unsure"
+      ]
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "branch": "then",
+        "probability": 0.81
+      }
+    ],
+    "handlersRun": [
+      [
+        "then"
+      ]
+    ],
+    "errors": [
+      null
+    ],
+    "backendCalls": 1
+  }
+}

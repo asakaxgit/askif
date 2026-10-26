@@ -1,0 +1,66 @@
+{
+  "id": "IF-11/skip-later-wins",
+  "criteria": [
+    "IF-11"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "yesno",
+            "probability": 0.5
+          },
+          {
+            "kind": "yesno",
+            "probability": 0.95
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "if",
+      "state": "x",
+      "unsureMode": "skip",
+      "handlers": [
+        "then",
+        "elseif",
+        "unsure"
+      ],
+      "conditions": [
+        {
+          "condition": "U"
+        },
+        {
+          "condition": "B"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "branch": "elseif",
+        "index": 1,
+        "unsureIndexes": [
+          0
+        ]
+      }
+    ],
+    "handlersRun": [
+      [
+        "elseif"
+      ]
+    ],
+    "errors": [
+      null
+    ],
+    "backendCalls": 1
+  }
+}

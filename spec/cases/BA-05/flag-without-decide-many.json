@@ -1,0 +1,63 @@
+{
+  "id": "BA-05/flag-without-decide-many",
+  "criteria": [
+    "BA-05",
+    "BA-02"
+  ],
+  "tags": [
+    "core"
+  ],
+  "config": {
+    "maxStatesPerBatch": 8
+  },
+  "backend": {
+    "multiState": true,
+    "hasDecideMany": false
+  },
+  "script": {
+    "decide": [
+      {
+        "answers": {
+          "each": {
+            "kind": "yesno",
+            "probability": 0.4
+          }
+        }
+      },
+      {
+        "answers": {
+          "each": {
+            "kind": "yesno",
+            "probability": 0.4
+          }
+        }
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "is",
+      "state": "a",
+      "condition": "ok"
+    },
+    {
+      "group": 0,
+      "op": "is",
+      "state": "b",
+      "condition": "ok"
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "value": false
+      },
+      {
+        "value": false
+      }
+    ],
+    "backendCalls": 2,
+    "decideMany": []
+  }
+}

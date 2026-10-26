@@ -1,0 +1,82 @@
+{
+  "id": "SC-04/descriptions",
+  "criteria": [
+    "SC-04"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "scale",
+            "probabilities": [
+              0,
+              0,
+              1
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "score",
+      "state": "x",
+      "question": "How severe?",
+      "levels": [
+        {
+          "key": "cosmetic",
+          "description": "Cosmetic; no impact"
+        },
+        {
+          "key": "workaround",
+          "description": {
+            "what": "Broken",
+            "examples": [
+              "export fails"
+            ]
+          }
+        },
+        {
+          "key": "blocking"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "level": "blocking",
+        "index": 2
+      }
+    ],
+    "decide": [
+      {
+        "questions": [
+          {
+            "kind": "scale",
+            "levels": [
+              "Cosmetic; no impact",
+              {
+                "what": "Broken",
+                "examples": [
+                  "export fails"
+                ]
+              },
+              "blocking"
+            ]
+          }
+        ]
+      }
+    ],
+    "errors": [
+      null
+    ],
+    "backendCalls": 1
+  }
+}

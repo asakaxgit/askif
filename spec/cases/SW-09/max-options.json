@@ -1,0 +1,44 @@
+{
+  "id": "SW-09/max-options",
+  "criteria": [
+    "SW-09"
+  ],
+  "tags": [
+    "core"
+  ],
+  "backend": {
+    "limits": {
+      "maxOptions": 2
+    }
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "switch",
+      "state": "x",
+      "question": "Q",
+      "options": [
+        {
+          "key": "a"
+        },
+        {
+          "key": "b"
+        },
+        {
+          "key": "c"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "error": "INVALID_QUESTION"
+      }
+    ],
+    "errors": [
+      "INVALID_QUESTION"
+    ],
+    "backendCalls": 0
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "id": "IF-13/winning-handler",
+  "criteria": [
+    "IF-13"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "yesno",
+            "probability": 0.97
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "if",
+      "state": "cat",
+      "condition": "is animal",
+      "handlers": [
+        "then",
+        "else",
+        "unsure"
+      ]
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "branch": "then"
+      }
+    ],
+    "handlersRun": [
+      [
+        "then"
+      ]
+    ],
+    "errors": [
+      null
+    ],
+    "backendCalls": 1
+  }
+}

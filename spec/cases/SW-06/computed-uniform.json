@@ -1,0 +1,54 @@
+{
+  "id": "SW-06/computed-uniform",
+  "criteria": [
+    "SW-06",
+    "CF-01"
+  ],
+  "tags": [
+    "core"
+  ],
+  "epsilon": 0.000001,
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "choice",
+            "probabilities": {
+              "a": 0.5,
+              "b": 0.5
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "switch",
+      "state": "x",
+      "question": "Q",
+      "options": [
+        {
+          "key": "a"
+        },
+        {
+          "key": "b"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "confidence": 0,
+        "choice": "a"
+      }
+    ],
+    "errors": [
+      null
+    ],
+    "backendCalls": 1
+  }
+}

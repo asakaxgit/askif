@@ -1,0 +1,34 @@
+{
+  "id": "PR-02/state-cap",
+  "criteria": [
+    "PR-02"
+  ],
+  "tags": [
+    "deferred"
+  ],
+  "config": {
+    "protection": {
+      "maxStateChars": 5
+    }
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "is",
+      "state": "hello",
+      "condition": "too big"
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "error": "UNSUPPORTED_INPUT"
+      }
+    ],
+    "errors": [
+      "UNSUPPORTED_INPUT"
+    ],
+    "backendCalls": 0,
+    "decide": []
+  }
+}

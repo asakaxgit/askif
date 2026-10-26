@@ -1,0 +1,87 @@
+{
+  "id": "ER-02/decide-many-item",
+  "criteria": [
+    "ER-02"
+  ],
+  "tags": [
+    "core"
+  ],
+  "backend": {
+    "multiState": true,
+    "hasDecideMany": true
+  },
+  "script": {
+    "decideMany": [
+      {
+        "answers": [
+          {
+            "kind": "yesno",
+            "probability": 0.95
+          },
+          {
+            "throw": true
+          },
+          {
+            "kind": "scale",
+            "probabilities": [
+              1,
+              0
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "is",
+      "state": "good",
+      "condition": "ok"
+    },
+    {
+      "group": 0,
+      "op": "is",
+      "state": "bad",
+      "condition": "ok"
+    },
+    {
+      "group": 0,
+      "op": "score",
+      "state": "also-good",
+      "question": "how?",
+      "levels": [
+        {
+          "key": "low"
+        },
+        {
+          "key": "high"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "value": true
+      },
+      {
+        "error": "BAD_RESPONSE"
+      },
+      {
+        "level": "low"
+      }
+    ],
+    "errors": [
+      null,
+      "BAD_RESPONSE",
+      null
+    ],
+    "backendCalls": 1,
+    "decideMany": [
+      {
+        "itemCount": 3
+      }
+    ]
+  }
+}

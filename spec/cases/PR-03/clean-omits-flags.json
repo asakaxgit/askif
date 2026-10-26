@@ -1,0 +1,49 @@
+{
+  "id": "PR-03/clean-omits-flags",
+  "criteria": [
+    "PR-03"
+  ],
+  "tags": [
+    "deferred"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "yesno",
+            "probability": 0.99
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "if",
+      "state": "cat",
+      "condition": "is animal",
+      "handlers": [
+        "then"
+      ]
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "branch": "then",
+        "flags": null
+      }
+    ],
+    "handlersRun": [
+      [
+        "then"
+      ]
+    ],
+    "errors": [
+      null
+    ],
+    "backendCalls": 1
+  }
+}

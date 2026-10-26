@@ -1,0 +1,53 @@
+{
+  "id": "IF-02/threshold-edge",
+  "criteria": [
+    "IF-02",
+    "CFG-01"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "yesno",
+            "probability": 0.5
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "if",
+      "state": "cat",
+      "condition": "is cute",
+      "handlers": [
+        "then",
+        "else"
+      ]
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "branch": "else",
+        "probabilities": [
+          0.5
+        ]
+      }
+    ],
+    "handlersRun": [
+      [
+        "else"
+      ]
+    ],
+    "errors": [
+      null
+    ],
+    "backendCalls": 1
+  }
+}

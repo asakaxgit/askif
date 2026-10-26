@@ -1,0 +1,36 @@
+{
+  "id": "SC-06/duplicate-level",
+  "criteria": [
+    "SC-06"
+  ],
+  "tags": [
+    "core"
+  ],
+  "calls": [
+    {
+      "group": 0,
+      "op": "score",
+      "state": "x",
+      "question": "Q",
+      "levels": [
+        {
+          "key": "a"
+        },
+        {
+          "key": "a"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "error": "INVALID_QUESTION"
+      }
+    ],
+    "errors": [
+      "INVALID_QUESTION"
+    ],
+    "backendCalls": 0
+  }
+}

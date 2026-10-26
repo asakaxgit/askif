@@ -1,0 +1,4 @@
+{
+  "typescript": ["node", "--import", "tsx", "conformance/typescript/driver.ts"],
+  "kotlin": ["kotlin/conformance/build/install/conformance/bin/conformance"]
+}

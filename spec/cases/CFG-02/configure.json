@@ -1,0 +1,65 @@
+{
+  "id": "CFG-02/configure",
+  "criteria": [
+    "CFG-02"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "yesno",
+            "probability": 0.6
+          }
+        ]
+      },
+      {
+        "answers": [
+          {
+            "kind": "yesno",
+            "probability": 0.6
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "is",
+      "state": "x",
+      "condition": "y"
+    },
+    {
+      "group": 1,
+      "op": "configure",
+      "configure": {
+        "threshold": 0.7
+      }
+    },
+    {
+      "group": 2,
+      "op": "is",
+      "state": "x",
+      "condition": "y"
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "value": true
+      },
+      {
+        "value": false
+      }
+    ],
+    "errors": [
+      null,
+      null
+    ],
+    "backendCalls": 2
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "id": "PR-04/cleaned-states-share",
+  "criteria": [
+    "PR-04"
+  ],
+  "tags": [
+    "deferred"
+  ],
+  "script": {
+    "decide": [
+      {
+        "byKind": {
+          "yesno": {
+            "same": 0.9
+          }
+        }
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "is",
+      "state": "a​b",
+      "condition": "same"
+    },
+    {
+      "group": 0,
+      "op": "is",
+      "state": "ab",
+      "condition": "same"
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "value": true
+      },
+      {
+        "value": true
+      }
+    ],
+    "errors": [
+      null,
+      null
+    ],
+    "backendCalls": 1,
+    "decide": [
+      {
+        "state": "ab",
+        "questionCount": 2
+      }
+    ],
+    "decideMany": []
+  }
+}

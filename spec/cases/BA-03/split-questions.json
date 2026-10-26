@@ -1,0 +1,63 @@
+{
+  "id": "BA-03/split-questions",
+  "criteria": [
+    "BA-03"
+  ],
+  "tags": [
+    "core"
+  ],
+  "config": {
+    "maxBatchSize": 2
+  },
+  "script": {
+    "decide": [
+      {
+        "answers": {
+          "each": {
+            "kind": "yesno",
+            "probability": 0.1
+          }
+        }
+      },
+      {
+        "answers": {
+          "each": {
+            "kind": "yesno",
+            "probability": 0.1
+          }
+        }
+      },
+      {
+        "answers": {
+          "each": {
+            "kind": "yesno",
+            "probability": 0.1
+          }
+        }
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "is",
+      "state": "x",
+      "conditionPrefix": "c",
+      "count": 5
+    }
+  ],
+  "expect": {
+    "backendCalls": 3,
+    "decide": [
+      {
+        "questionCount": 2
+      },
+      {
+        "questionCount": 2
+      },
+      {
+        "questionCount": 1
+      }
+    ]
+  }
+}

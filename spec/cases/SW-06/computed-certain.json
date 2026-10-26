@@ -1,0 +1,54 @@
+{
+  "id": "SW-06/computed-certain",
+  "criteria": [
+    "SW-06",
+    "CF-01"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "choice",
+            "probabilities": {
+              "a": 1,
+              "b": 0
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "switch",
+      "state": "x",
+      "question": "Q",
+      "options": [
+        {
+          "key": "a"
+        },
+        {
+          "key": "b"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "branch": "case",
+        "choice": "a",
+        "confidence": 1
+      }
+    ],
+    "errors": [
+      null
+    ],
+    "backendCalls": 1
+  }
+}

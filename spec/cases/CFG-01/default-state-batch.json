@@ -1,0 +1,59 @@
+{
+  "id": "CFG-01/default-state-batch",
+  "criteria": [
+    "CFG-01",
+    "LM-02"
+  ],
+  "tags": [
+    "core"
+  ],
+  "backend": {
+    "multiState": true,
+    "hasDecideMany": true
+  },
+  "script": {
+    "decideMany": [
+      {
+        "answers": {
+          "each": {
+            "kind": "yesno",
+            "probability": 0.1
+          }
+        }
+      }
+    ],
+    "decide": [
+      {
+        "answers": {
+          "each": {
+            "kind": "yesno",
+            "probability": 0.1
+          }
+        }
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "is",
+      "statePrefix": "s",
+      "condition": "ok",
+      "count": 17
+    }
+  ],
+  "expect": {
+    "backendCalls": 2,
+    "decideMany": [
+      {
+        "itemCount": 16
+      }
+    ],
+    "decide": [
+      {
+        "state": "s16",
+        "questionCount": 1
+      }
+    ]
+  }
+}

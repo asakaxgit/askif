@@ -1,0 +1,72 @@
+{
+  "id": "SC-01/weighted-score",
+  "criteria": [
+    "SC-01"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "scale",
+            "probabilities": [
+              0,
+              0.57,
+              0.43
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "score",
+      "state": "x",
+      "question": "How severe?",
+      "handlers": [
+        "level"
+      ],
+      "levels": [
+        {
+          "key": "low"
+        },
+        {
+          "key": "mid"
+        },
+        {
+          "key": "high"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "branch": "level",
+        "level": "mid",
+        "index": 1,
+        "score": 1.43,
+        "normalized": 0.715,
+        "probabilities": [
+          0,
+          0.57,
+          0.43
+        ]
+      }
+    ],
+    "handlersRun": [
+      [
+        "level"
+      ]
+    ],
+    "errors": [
+      null
+    ],
+    "backendCalls": 1
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "id": "BA-06/repeated-state",
+  "criteria": [
+    "BA-06"
+  ],
+  "tags": [
+    "core"
+  ],
+  "config": {
+    "maxStatesPerBatch": 2
+  },
+  "backend": {
+    "multiState": true,
+    "hasDecideMany": true
+  },
+  "script": {
+    "decideMany": [
+      {
+        "answers": {
+          "each": {
+            "kind": "yesno",
+            "probability": 0.5
+          }
+        }
+      }
+    ],
+    "decide": [
+      {
+        "answers": {
+          "each": {
+            "kind": "yesno",
+            "probability": 0.5
+          }
+        }
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "is",
+      "state": "a",
+      "condition": "one"
+    },
+    {
+      "group": 0,
+      "op": "is",
+      "state": "a",
+      "condition": "two"
+    },
+    {
+      "group": 0,
+      "op": "is",
+      "state": "b",
+      "condition": "three"
+    },
+    {
+      "group": 0,
+      "op": "is",
+      "state": "c",
+      "condition": "four"
+    }
+  ],
+  "expect": {
+    "backendCalls": 2,
+    "decideMany": [
+      {
+        "items": [
+          {
+            "id": "q0",
+            "state": "a"
+          },
+          {
+            "id": "q1",
+            "state": "a"
+          },
+          {
+            "id": "q2",
+            "state": "b"
+          }
+        ]
+      }
+    ],
+    "decide": [
+      {
+        "state": "c",
+        "questionCount": 1
+      }
+    ]
+  }
+}

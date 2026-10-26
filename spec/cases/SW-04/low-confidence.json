@@ -1,0 +1,67 @@
+{
+  "id": "SW-04/low-confidence",
+  "criteria": [
+    "SW-04"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "choice",
+            "probabilities": {
+              "a": 0.4,
+              "b": 0.35,
+              "c": 0.25
+            },
+            "confidence": 0.2
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "switch",
+      "state": "x",
+      "question": "Q",
+      "handlers": [
+        "case",
+        "unsure"
+      ],
+      "options": [
+        {
+          "key": "a"
+        },
+        {
+          "key": "b"
+        },
+        {
+          "key": "c"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "branch": "unsure",
+        "choice": "a",
+        "confidence": 0.2
+      }
+    ],
+    "handlersRun": [
+      [
+        "unsure"
+      ]
+    ],
+    "errors": [
+      null
+    ],
+    "backendCalls": 1
+  }
+}

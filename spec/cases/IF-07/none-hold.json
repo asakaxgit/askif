@@ -1,0 +1,66 @@
+{
+  "id": "IF-07/none-hold",
+  "criteria": [
+    "IF-07"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "yesno",
+            "probability": 0.05
+          },
+          {
+            "kind": "yesno",
+            "probability": 0.01
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "if",
+      "state": "x",
+      "handlers": [
+        "then",
+        "elseif",
+        "else"
+      ],
+      "conditions": [
+        {
+          "condition": "A"
+        },
+        {
+          "condition": "no"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "branch": "else",
+        "probabilities": [
+          0.05,
+          0.01
+        ],
+        "unsureIndexes": []
+      }
+    ],
+    "handlersRun": [
+      [
+        "else"
+      ]
+    ],
+    "errors": [
+      null
+    ],
+    "backendCalls": 1
+  }
+}

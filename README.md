@@ -22,6 +22,8 @@ Each call asks [Jev](https://typesafe.ai/blog/introducing-system-one-models-and-
 
 > Unofficial, not affiliated with TypeSafe AI.
 
+The same core is also implemented on the JVM in [`kotlin/`](./kotlin). Shared behavior is the conformance suite in [`spec/`](./spec).
+
 ## Install
 
 ```sh

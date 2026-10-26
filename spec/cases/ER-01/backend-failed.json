@@ -1,0 +1,35 @@
+{
+  "id": "ER-01/backend-failed",
+  "criteria": [
+    "ER-01"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "decide": [
+      {
+        "throw": true
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "is",
+      "state": "x",
+      "condition": "y"
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "error": "BACKEND_FAILED"
+      }
+    ],
+    "errors": [
+      "BACKEND_FAILED"
+    ],
+    "backendCalls": 1
+  }
+}

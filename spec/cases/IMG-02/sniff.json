@@ -1,0 +1,104 @@
+{
+  "id": "IMG-02/sniff",
+  "criteria": [
+    "IMG-02"
+  ],
+  "tags": [
+    "deferred"
+  ],
+  "calls": [
+    {
+      "group": 0,
+      "op": "image",
+      "input": {
+        "bytes": [
+          137,
+          80,
+          78,
+          71,
+          13,
+          10,
+          26,
+          10,
+          1,
+          2,
+          3,
+          251,
+          239,
+          255
+        ]
+      }
+    },
+    {
+      "group": 1,
+      "op": "image",
+      "input": {
+        "base64": "iVBORw0KGgoBAgP77/8="
+      }
+    },
+    {
+      "group": 2,
+      "op": "image",
+      "input": {
+        "base64": "iVBORw0KGgoBAgP77_8"
+      }
+    },
+    {
+      "group": 3,
+      "op": "image",
+      "input": {
+        "dataUrl": "data:image/png;base64,iVBORw0KGgoBAgP77_8"
+      }
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "image": {
+          "type": "image",
+          "source": {
+            "kind": "base64",
+            "mediaType": "image/png",
+            "data": "iVBORw0KGgoBAgP77/8="
+          }
+        }
+      },
+      {
+        "image": {
+          "type": "image",
+          "source": {
+            "kind": "base64",
+            "mediaType": "image/png",
+            "data": "iVBORw0KGgoBAgP77/8="
+          }
+        }
+      },
+      {
+        "image": {
+          "type": "image",
+          "source": {
+            "kind": "base64",
+            "mediaType": "image/png",
+            "data": "iVBORw0KGgoBAgP77/8="
+          }
+        }
+      },
+      {
+        "image": {
+          "type": "image",
+          "source": {
+            "kind": "base64",
+            "mediaType": "image/png",
+            "data": "iVBORw0KGgoBAgP77/8="
+          }
+        }
+      }
+    ],
+    "errors": [
+      null,
+      null,
+      null,
+      null
+    ]
+  }
+}

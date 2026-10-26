@@ -1,0 +1,61 @@
+{
+  "id": "BA-04/one-state-uses-decide",
+  "criteria": [
+    "BA-04"
+  ],
+  "tags": [
+    "core"
+  ],
+  "backend": {
+    "multiState": true,
+    "hasDecideMany": true
+  },
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "yesno",
+            "probability": 0.7
+          },
+          {
+            "kind": "yesno",
+            "probability": 0.4
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "is",
+      "state": "dog",
+      "condition": "is animal"
+    },
+    {
+      "group": 0,
+      "op": "is",
+      "state": "dog",
+      "condition": "is cute"
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "value": true
+      },
+      {
+        "value": false
+      }
+    ],
+    "backendCalls": 1,
+    "decide": [
+      {
+        "state": "dog",
+        "questionCount": 2
+      }
+    ],
+    "decideMany": []
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "id": "SC-05/too-few-levels",
+  "criteria": [
+    "SC-05"
+  ],
+  "tags": [
+    "core"
+  ],
+  "calls": [
+    {
+      "group": 0,
+      "op": "score",
+      "state": "x",
+      "question": "Q",
+      "levels": [
+        {
+          "key": "only"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "error": "INVALID_QUESTION"
+      }
+    ],
+    "errors": [
+      "INVALID_QUESTION"
+    ],
+    "backendCalls": 0
+  }
+}

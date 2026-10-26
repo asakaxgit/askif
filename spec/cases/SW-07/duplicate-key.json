@@ -1,0 +1,39 @@
+{
+  "id": "SW-07/duplicate-key",
+  "criteria": [
+    "SW-07"
+  ],
+  "tags": [
+    "core"
+  ],
+  "calls": [
+    {
+      "group": 0,
+      "op": "switch",
+      "state": "x",
+      "question": "Q",
+      "options": [
+        {
+          "key": "a"
+        },
+        {
+          "key": "a"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "error": "INVALID_QUESTION"
+      }
+    ],
+    "handlersRun": [
+      []
+    ],
+    "errors": [
+      "INVALID_QUESTION"
+    ],
+    "backendCalls": 0
+  }
+}

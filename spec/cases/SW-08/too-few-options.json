@@ -1,0 +1,33 @@
+{
+  "id": "SW-08/too-few-options",
+  "criteria": [
+    "SW-08"
+  ],
+  "tags": [
+    "core"
+  ],
+  "calls": [
+    {
+      "group": 0,
+      "op": "switch",
+      "state": "x",
+      "question": "Q",
+      "options": [
+        {
+          "key": "only"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "error": "INVALID_QUESTION"
+      }
+    ],
+    "errors": [
+      "INVALID_QUESTION"
+    ],
+    "backendCalls": 0
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "id": "IF-04/per-call-threshold",
+  "criteria": [
+    "IF-04"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "yesno",
+            "probability": 0.4
+          }
+        ]
+      },
+      {
+        "answers": [
+          {
+            "kind": "yesno",
+            "probability": 0.4
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "if",
+      "state": "x",
+      "condition": "edge",
+      "threshold": 0.4,
+      "handlers": [
+        "then",
+        "else"
+      ]
+    },
+    {
+      "group": 1,
+      "op": "if",
+      "state": "x",
+      "condition": "edge",
+      "threshold": 0.3,
+      "handlers": [
+        "then",
+        "else"
+      ]
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "branch": "else"
+      },
+      {
+        "branch": "then",
+        "probability": 0.4
+      }
+    ],
+    "errors": [
+      null,
+      null
+    ],
+    "backendCalls": 2
+  }
+}

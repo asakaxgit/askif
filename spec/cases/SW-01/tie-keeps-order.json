@@ -1,0 +1,69 @@
+{
+  "id": "SW-01/tie-keeps-order",
+  "criteria": [
+    "SW-01"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "choice",
+            "probabilities": {
+              "a": 0.4,
+              "b": 0.4,
+              "c": 0.2
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "switch",
+      "state": "x",
+      "question": "tie?",
+      "options": [
+        {
+          "key": "a"
+        },
+        {
+          "key": "b"
+        },
+        {
+          "key": "c"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "choice": "a",
+        "ranking": [
+          {
+            "key": "a",
+            "probability": 0.4
+          },
+          {
+            "key": "b",
+            "probability": 0.4
+          },
+          {
+            "key": "c",
+            "probability": 0.2
+          }
+        ]
+      }
+    ],
+    "errors": [
+      null
+    ],
+    "backendCalls": 1
+  }
+}

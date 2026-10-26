@@ -1,0 +1,75 @@
+{
+  "id": "IF-10/unsure-stops",
+  "criteria": [
+    "IF-10"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "yesno",
+            "probability": 0.05
+          },
+          {
+            "kind": "yesno",
+            "probability": 0.5
+          },
+          {
+            "kind": "yesno",
+            "probability": 0.95
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "if",
+      "state": "x",
+      "handlers": [
+        "then",
+        "elseif",
+        "else",
+        "unsure"
+      ],
+      "conditions": [
+        {
+          "condition": "A"
+        },
+        {
+          "condition": "U"
+        },
+        {
+          "condition": "B"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "branch": "unsure",
+        "index": 1,
+        "condition": "U",
+        "probability": 0.5,
+        "unsureIndexes": [
+          1
+        ]
+      }
+    ],
+    "handlersRun": [
+      [
+        "unsure"
+      ]
+    ],
+    "errors": [
+      null
+    ],
+    "backendCalls": 1
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "id": "PR-06/data-url-rejected",
+  "criteria": [
+    "PR-06"
+  ],
+  "tags": [
+    "deferred"
+  ],
+  "calls": [
+    {
+      "group": 0,
+      "op": "is",
+      "state": {
+        "note": "data:image/png;base64,AAAA"
+      },
+      "condition": "text"
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "error": "UNSUPPORTED_INPUT"
+      }
+    ],
+    "errors": [
+      "UNSUPPORTED_INPUT"
+    ],
+    "backendCalls": 0,
+    "decide": []
+  }
+}

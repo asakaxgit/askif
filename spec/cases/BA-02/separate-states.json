@@ -1,0 +1,78 @@
+{
+  "id": "BA-02/separate-states",
+  "criteria": [
+    "BA-02"
+  ],
+  "tags": [
+    "core"
+  ],
+  "config": {
+    "maxStatesPerBatch": 10
+  },
+  "script": {
+    "decide": [
+      {
+        "answers": {
+          "each": {
+            "kind": "yesno",
+            "probability": 0.9
+          }
+        }
+      },
+      {
+        "answers": {
+          "each": {
+            "kind": "yesno",
+            "probability": 0.9
+          }
+        }
+      },
+      {
+        "answers": {
+          "each": {
+            "kind": "yesno",
+            "probability": 0.9
+          }
+        }
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "is",
+      "state": "a",
+      "condition": "ok"
+    },
+    {
+      "group": 0,
+      "op": "is",
+      "state": "b",
+      "condition": "ok"
+    },
+    {
+      "group": 0,
+      "op": "is",
+      "state": "c",
+      "condition": "ok"
+    }
+  ],
+  "expect": {
+    "backendCalls": 3,
+    "decideMany": [],
+    "decide": [
+      {
+        "state": "a",
+        "questionCount": 1
+      },
+      {
+        "state": "b",
+        "questionCount": 1
+      },
+      {
+        "state": "c",
+        "questionCount": 1
+      }
+    ]
+  }
+}

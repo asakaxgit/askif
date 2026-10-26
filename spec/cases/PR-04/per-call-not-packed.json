@@ -1,0 +1,80 @@
+{
+  "id": "PR-04/per-call-not-packed",
+  "criteria": [
+    "PR-04"
+  ],
+  "tags": [
+    "deferred"
+  ],
+  "backend": {
+    "multiState": true,
+    "hasDecideMany": true
+  },
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "yesno",
+            "probability": 0.9
+          }
+        ]
+      },
+      {
+        "answers": [
+          {
+            "kind": "yesno",
+            "probability": 0.9
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "is",
+      "state": "a​b",
+      "condition": "raw",
+      "protection": false
+    },
+    {
+      "group": 0,
+      "op": "is",
+      "state": "a​b",
+      "condition": "clean"
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "value": true
+      },
+      {
+        "value": true
+      }
+    ],
+    "errors": [
+      null,
+      null
+    ],
+    "backendCalls": 2,
+    "decide": [
+      {
+        "state": "a​b",
+        "context": {
+          "protection": false,
+          "images": "auto"
+        }
+      },
+      {
+        "state": "ab",
+        "context": {
+          "protection": true,
+          "images": "auto"
+        }
+      }
+    ],
+    "decideMany": []
+  }
+}

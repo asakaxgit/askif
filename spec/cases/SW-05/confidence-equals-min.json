@@ -1,0 +1,63 @@
+{
+  "id": "SW-05/confidence-equals-min",
+  "criteria": [
+    "SW-05",
+    "CFG-01"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "choice",
+            "probabilities": {
+              "a": 0.7,
+              "b": 0.3
+            },
+            "confidence": 0.5
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "switch",
+      "state": "x",
+      "question": "Q",
+      "handlers": [
+        "case",
+        "unsure"
+      ],
+      "options": [
+        {
+          "key": "a"
+        },
+        {
+          "key": "b"
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "branch": "case",
+        "confidence": 0.5
+      }
+    ],
+    "handlersRun": [
+      [
+        "case"
+      ]
+    ],
+    "errors": [
+      null
+    ],
+    "backendCalls": 1
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "id": "IF-01/then",
+  "criteria": [
+    "IF-01"
+  ],
+  "tags": [
+    "core"
+  ],
+  "script": {
+    "decide": [
+      {
+        "answers": [
+          {
+            "kind": "yesno",
+            "probability": 0.97
+          }
+        ]
+      }
+    ]
+  },
+  "calls": [
+    {
+      "group": 0,
+      "op": "if",
+      "state": "cat",
+      "condition": "is animal",
+      "handlers": [
+        "then",
+        "else"
+      ]
+    }
+  ],
+  "expect": {
+    "results": [
+      {
+        "branch": "then",
+        "index": 0,
+        "condition": "is animal",
+        "probability": 0.97,
+        "probabilities": [
+          0.97
+        ],
+        "unsureIndexes": []
+      }
+    ],
+    "handlersRun": [
+      [
+        "then"
+      ]
+    ],
+    "errors": [
+      null
+    ],
+    "backendCalls": 1
+  }
+}
