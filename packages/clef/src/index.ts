@@ -1,5 +1,5 @@
-import { createAsk, extractImages, makeAskError } from "askif";
-import type { Answer, Backend, Image, Json, Question } from "askif";
+import { clipUntrusted, createAsk, extractImages, makeAskError } from "askif";
+import type { Answer, Backend, DecisionContext, Image, Json, Question } from "askif";
 
 export type ClefModel = "clef" | "clef-flash";
 
@@ -154,7 +154,7 @@ const describeErrors = (errors: unknown): string =>
 const unwrap = (body: unknown): unknown => {
   if (isRecord(body) && "success" in body && "result" in body) {
     if (body["success"] === false) {
-      throw makeAskError("BACKEND_FAILED", `Clef request failed: ${describeErrors(body["errors"])}`);
+      throw makeAskError("BACKEND_FAILED", `Clef request failed: ${clipUntrusted(describeErrors(body["errors"]))}`);
     }
     return body["result"];
   }
@@ -199,7 +199,7 @@ export const clef = (options: ClefOptions = {}): Backend => {
       body = undefined;
     }
     if (!response.ok) {
-      const detail = describeErrors(isRecord(body) ? body["errors"] : undefined) || text.slice(0, 200);
+      const detail = clipUntrusted(describeErrors(isRecord(body) ? body["errors"] : undefined) || text);
       throw makeAskError("BACKEND_FAILED", `Clef request failed (HTTP ${response.status}): ${detail}`);
     }
     return unwrap(body);
@@ -208,8 +208,9 @@ export const clef = (options: ClefOptions = {}): Backend => {
   return {
     name: "clef",
     limits: LIMITS,
-    decide: async (state, questions) => {
-      const { state: text, images: found } = extractImages(state);
+    decide: async (state, questions, context?: DecisionContext) => {
+      const explicit = context?.images === "explicit";
+      const { state: text, images: found } = extractImages(state, explicit ? { only: "image" } : {});
       if (found.length > LIMITS.maxImages) {
         throw makeAskError(
           "UNSUPPORTED_INPUT",

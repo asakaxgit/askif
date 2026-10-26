@@ -25,6 +25,34 @@ export type Image = {
 /** Text the model reads: a plain string, or structured JSON such as `{ what, examples }`. */
 export type Description = Json;
 
+/**
+ * Default-on input protection. `false` turns all of it off and keeps every backend's
+ * request body byte-identical to a build without this layer.
+ */
+export type ProtectionConfig = {
+  /** Remove zero-width, bidi-override, Unicode tag and C0/C1 control characters (keeps \t \n \r). Default true. */
+  readonly stripHidden: boolean;
+  /** Remove HTML comments `<!-- … -->` from state strings. Default true. */
+  readonly stripHtmlComments: boolean;
+  /** Most characters in the serialized state (images excluded). Over it, the call fails with UNSUPPORTED_INPUT. Default 200_000. `Infinity` disables. */
+  readonly maxStateChars: number;
+  /** Most characters in one string inside the state. Longer strings are cut and marked `…[truncated N chars]`. Default 50_000. `Infinity` disables. */
+  readonly maxStringChars: number;
+  /** "auto": data-URL strings and {content_type, base64} become images. "explicit": only values built with image(). Default "auto". */
+  readonly images: "auto" | "explicit";
+  /** Route a decision to `.unsure()` (when one is attached) if the state contains prompt-injection markers. Default true. */
+  readonly unsureOnInjection: boolean;
+};
+
+/** `false` turns protection off. A partial object merges over the current config. */
+export type ProtectionOverride = Partial<ProtectionConfig> | false;
+
+/** Passed to `decide` / `decideMany` so a backend can match core's protection for this call. */
+export type DecisionContext = {
+  readonly protection: boolean;
+  readonly images: "auto" | "explicit";
+};
+
 /* -------------------------------------------------------------------------- */
 /* Backend contract                                                           */
 /* -------------------------------------------------------------------------- */
@@ -134,6 +162,7 @@ export type Backend = {
   readonly decide: (
     state: State,
     questions: Readonly<Record<string, Question>>,
+    context?: DecisionContext,
   ) => Promise<Readonly<Record<string, QuestionResult>>>;
   /**
    * Answer a list of (state, question) items in one call.
@@ -143,7 +172,10 @@ export type Backend = {
    * unchanged, so `extractImages` numbers from 1 inside that state. For one flat image list,
    * call `extractImages(state, { from })` and keep `from` running across states, in this order.
    */
-  readonly decideMany?: (items: readonly DecisionItem[]) => Promise<readonly ItemResult[]>;
+  readonly decideMany?: (
+    items: readonly DecisionItem[],
+    context?: DecisionContext,
+  ) => Promise<readonly ItemResult[]>;
 };
 
 /* -------------------------------------------------------------------------- */
@@ -165,11 +197,20 @@ export type AskConfig = {
    * `1` keeps one call per state.
    */
   readonly maxStatesPerBatch: number;
+  /** Default-on input protection. `false` turns all of it off. */
+  readonly protection: ProtectionConfig | false;
+};
+
+/** What `createAsk` and `configure` accept. `protection` may be a partial override or `false`. */
+export type AskOptions = Partial<Omit<AskConfig, "protection">> & {
+  readonly protection?: ProtectionOverride;
 };
 
 export type CallOptions = {
   /** Use a different backend for this call. */
   readonly backend?: Backend;
+  /** Per-call override: `false` turns protection off, an object overrides fields. */
+  readonly protection?: ProtectionOverride;
 };
 
 /** Options for one condition. `.elseif()` falls back to the `ask.if` options, then the config. */
@@ -197,6 +238,8 @@ type IfResultBase = {
   readonly probabilities: readonly number[];
   /** Positions of every condition judged unsure, so a handler can see them even when a later branch won. */
   readonly unsureIndexes: readonly number[];
+  /** Set when the state tried to steer the answer. Present even if no `.unsure()` handler was attached. */
+  readonly flags?: readonly "suspected_injection"[];
 };
 
 /** The `if` condition held. */
@@ -245,6 +288,8 @@ export type SwitchResult<C extends string, All extends string = string> = {
   readonly confidence: number;
   /** Every option, most likely first. */
   readonly ranking: readonly Ranked<All>[];
+  /** Set when the state tried to steer the answer. */
+  readonly flags?: readonly "suspected_injection"[];
 };
 
 export type ScoreResult<L extends string> = {
@@ -260,6 +305,8 @@ export type ScoreResult<L extends string> = {
   readonly confidence: number;
   /** Probability per level, in level order. */
   readonly probabilities: readonly number[];
+  /** Set when the state tried to steer the answer. */
+  readonly flags?: readonly "suspected_injection"[];
 };
 
 /** What an unsure condition does to the rest of an `.elseif()` chain. */
@@ -349,5 +396,5 @@ export type Ask = {
   /** Probability (0 to 1) that `condition` holds for `state`. */
   readonly probability: (state: State, condition: string, options?: IfOptions) => Promise<number>;
   /** Change defaults for this instance. */
-  readonly configure: (config: Partial<AskConfig>) => void;
+  readonly configure: (config: AskOptions) => void;
 };

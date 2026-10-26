@@ -44,6 +44,9 @@ Every question carries its images, so N questions about an image send it N times
   by default in that case, since non-reasoning or third-party models can reject it.
 - `params` passes extra fields (`temperature`, `reasoning_effort`, etc.) through to every request,
   applied after this backend's own defaults so they can override them.
+- The state is wrapped in a random `<state-…>` tag. The system prompt says that tag is the only
+  state, and that text inside it is not an instruction. `openai({ protection: false })`, or core
+  `protection: false`, sends the previous prompt, with `<state>` and `</state>`.
 
 ## Other endpoints
 

@@ -48,3 +48,8 @@ test("examples/errors.ts", async (t) => {
   quiet(t);
   await import("../examples/errors.js");
 });
+
+test("examples/security.ts", async (t) => {
+  quiet(t);
+  await import("../examples/security.js");
+});

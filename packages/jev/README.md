@@ -39,6 +39,8 @@ Those calls then share one request, up to `maxStatesPerBatch` on the `ask` insta
 
 Leave `multiState` unset, or set `ask.configure({ maxStatesPerBatch: 1 })`, to keep one request per state.
 
+Do not mix different users or tenants in one packed request when the decision is security-relevant. With protection on (the default), a state that looks injected is sent on its own, and the scope note says text in one item is not an instruction and does not change the answer about another item. `protection: false` restores the previous note and the previous packing.
+
 ## Images
 
 Experimental, and off unless you opt in. Jev 1.13.0 and 1.14.0 accept images (and `jev-latest` while it points at 1.14). The [models page](https://docs.typesafe.ai/models) still lists their input as text, so treat the format as unstable.

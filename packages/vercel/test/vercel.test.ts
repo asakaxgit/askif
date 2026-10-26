@@ -444,3 +444,119 @@ test("an SDK refusal fails the whole call, and a thrown decide error is BACKEND_
     return true;
   });
 });
+
+const yesNo = (condition: string): { readonly [key: string]: unknown } => ({
+  q0: {
+    type: "boolean",
+    instructions: { condition, question: "Is `condition` true of the state?" },
+  },
+});
+
+const recording = (raws: string[]): typeof fetch =>
+  async (_url, init) => {
+    raws.push(String(init?.body));
+    return new Response(
+      JSON.stringify({
+        answers: {
+          q0: { type: "boolean", probability: 0.5 },
+          q: { type: "boolean", probability: 0.5 },
+        },
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    );
+  };
+
+test("protection: false posts the historical HTTP body", async () => {
+  const raws: string[] = [];
+  const dirty = "a\u200bb";
+  const backend = vercel({ apiKey: "k", fetch: recording(raws) });
+  await createAsk({ backend, protection: false }).is(dirty, "is odd");
+  assert.equal(
+    raws[0],
+    JSON.stringify({ model: "typesafe-ai/jev", state: dirty, questions: yesNo("is odd") }),
+  );
+  assert.equal(Buffer.from(raws[0] ?? "").includes(Buffer.from([0xe2, 0x80, 0x8b])), true);
+
+  raws.length = 0;
+  const state = { note: dirty, n: 1, flag: true };
+  await backend.decide(state, YESNO);
+  await backend.decide(state, YESNO, { protection: false, images: "auto" });
+  const direct = JSON.stringify({
+    model: "typesafe-ai/jev",
+    state,
+    questions: { q: { type: "boolean", instructions: "ok?" } },
+  });
+  assert.equal(raws[0], direct);
+  assert.equal(raws[1], direct);
+
+  raws.length = 0;
+  await createAsk({ backend }).is(dirty, "is odd");
+  const cleaned = JSON.parse(raws[0] ?? "{}");
+  assert.ok(isRecord(cleaned));
+  assert.equal(cleaned["state"], "ab");
+});
+
+test("explicit mode leaves a data URL as text on HTTP and on vercelDecide", async () => {
+  const raws: string[] = [];
+  const url = "data:image/png;base64,AAAA";
+  const backend = vercel({ apiKey: "k", fetch: recording(raws) });
+  await assert.rejects(
+    () => backend.decide({ note: url }, YESNO),
+    (error: unknown) => isAskError(error) && error.code === "UNSUPPORTED_INPUT" && /POST \/v1\/evaluate/.test(error.message),
+  );
+  await createAsk({ backend, protection: { images: "explicit" } }).is({ note: url }, "is odd");
+  assert.equal(
+    raws[0],
+    JSON.stringify({
+      model: "typesafe-ai/jev",
+      state: { note: url },
+      questions: yesNo("is odd"),
+    }),
+  );
+
+  const calls: VercelDecideInput[] = [];
+  const decide = async (input: VercelDecideInput): Promise<unknown> => {
+    calls.push(input);
+    return { answers: { q: { type: "boolean", probability: 0.5 }, q0: { type: "boolean", probability: 0.5 } } };
+  };
+  const sdk = vercelDecide({ apiKey: "k", images: true, decide });
+  const dirty = "a\u200bb";
+  await sdk.decide({ note: dirty, photo: png }, YESNO);
+  await sdk.decide({ note: dirty, photo: png }, YESNO, { protection: false, images: "auto" });
+  const historical = {
+    model: "typesafe-ai/jev",
+    state: [
+      { type: "json", value: { note: dirty, photo: "[image 1]" } },
+      { type: "file", mediaType: "image/png", data: png.source.data },
+    ],
+    questions: { q: { type: "boolean", instructions: "ok?" } },
+  };
+  assert.equal(JSON.stringify(calls[0]), JSON.stringify(historical));
+  assert.equal(JSON.stringify(calls[1]), JSON.stringify(historical));
+  await sdk.decide({ note: url, photo: png }, YESNO, { protection: true, images: "explicit" });
+  assert.deepEqual(calls[2]?.state, [
+    { type: "json", value: { note: url, photo: "[image 1]" } },
+    { type: "file", mediaType: "image/png", data: png.source.data },
+  ]);
+  await createAsk({ backend: sdk, protection: false }).is(dirty, "is odd");
+  assert.equal(
+    JSON.stringify(calls[3]),
+    JSON.stringify({
+      model: "typesafe-ai/jev",
+      state: dirty,
+      questions: yesNo("is odd"),
+    }),
+  );
+});
+
+test("provider error text is clipped", async () => {
+  const http = vercel({
+    apiKey: "k",
+    fetch: async () => new Response(JSON.stringify({ error: { message: `\u0007${"z".repeat(250)}` } }), { status: 401 }),
+  });
+  await assert.rejects(
+    () => http.decide("x", YESNO),
+    (error: unknown) =>
+      isAskError(error) && error.message === `Vercel AI Gateway request failed (HTTP 401): ${"z".repeat(200)}`,
+  );
+});
