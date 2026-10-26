@@ -83,7 +83,6 @@ const toClef = (question: Question): ClefQuestion => {
 /** An image as Clef takes it. */
 type ClefImage = { content_type: string; base64: string };
 
-const MAX_IMAGES = 4;
 const MEDIA_TYPES: readonly string[] = ["image/png", "image/jpeg", "image/webp"];
 
 /** Moves the state's images into Clef's `images` field (see `extractImages` in askif for how they are found). */
@@ -211,8 +210,11 @@ export const clef = (options: ClefOptions = {}): Backend => {
     limits: LIMITS,
     decide: async (state, questions) => {
       const { state: text, images: found } = extractImages(state);
-      if (found.length > MAX_IMAGES) {
-        throw makeAskError("UNSUPPORTED_INPUT", `Clef takes at most ${MAX_IMAGES} images per state, got ${found.length}.`);
+      if (found.length > LIMITS.maxImages) {
+        throw makeAskError(
+          "UNSUPPORTED_INPUT",
+          `Clef takes at most ${LIMITS.maxImages} images per state, got ${found.length}.`,
+        );
       }
       const images = toClefImages(found);
       const result = await call({

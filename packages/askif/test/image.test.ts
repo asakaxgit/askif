@@ -28,6 +28,16 @@ test("image() takes a data URL, and an explicit media type wins", () => {
   assert.equal(image(b64(JPEG), "image/png").source.mediaType, "image/png");
 });
 
+test("image() accepts base64url and stores standard base64", () => {
+  const bytes = Uint8Array.from([...PNG, 0xfb, 0xef, 0xff]);
+  const standard = b64(bytes);
+  assert.match(standard, /[+/]/);
+  const base64url = standard.replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
+  assert.deepEqual(image(base64url), image(bytes));
+  assert.deepEqual(image(`data:image/png;base64,${base64url}`), image(bytes));
+  assert.equal(image(base64url).source.mediaType, "image/png");
+});
+
 test("image() rejects what it can't make sense of", () => {
   const unsupported = (error: unknown): boolean => isAskError(error) && error.code === "UNSUPPORTED_INPUT";
   assert.throws(() => image(Uint8Array.from([1, 2, 3, 4])), unsupported); // unknown format

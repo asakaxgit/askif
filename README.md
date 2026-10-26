@@ -211,7 +211,7 @@ await Promise.all([
 
 ## Images
 
-Put an image in the state with `image()`: from bytes, from base64, or from a `data:` URL. The format (PNG, JPEG, WebP, GIF) is detected, or pass it as the second argument.
+Put an image in the state with `image()`: from bytes, from base64 or base64url, or from a `data:` URL. The format (PNG, JPEG, WebP, GIF) is detected, or pass it as the second argument. Stored bytes are standard base64.
 
 ```ts
 import { readFile } from "node:fs/promises";

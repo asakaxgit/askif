@@ -30,31 +30,42 @@ const toBase64 = (bytes: Uint8Array): string => {
   return btoa(binary);
 };
 
-const headOf = (base64: string): Uint8Array => {
+const DATA_URL = /^data:(image\/[a-z0-9.+-]+);base64,(.*)$/is;
+const STANDARD_BASE64 = /^[A-Za-z0-9+/]*={0,2}$/;
+const MEDIA_TYPE = /^image\/[a-z0-9.+-]+$/i;
+
+/**
+ * Standard base64 with padding, or undefined.
+ * Accepts base64url (`-`/`_`, padding optional): sniffing already did, validation did not.
+ */
+const canonicalizeBase64 = (data: string): string | undefined => {
+  if (data.length === 0 || /[^A-Za-z0-9+/_=-]/.test(data)) return undefined;
+  const unpadded = data.replace(/-/g, "+").replace(/_/g, "/").replace(/=+$/, "");
+  if (unpadded.length === 0 || unpadded.length % 4 === 1 || !/^[A-Za-z0-9+/]+$/.test(unpadded)) return undefined;
+  return unpadded + "=".repeat((4 - (unpadded.length % 4)) % 4);
+};
+
+const headOf = (canonical: string): Uint8Array => {
   try {
-    return Uint8Array.from(atob(base64.slice(0, 16).replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
+    return Uint8Array.from(atob(canonical.slice(0, 16)), (c) => c.charCodeAt(0));
   } catch {
     return new Uint8Array();
   }
 };
 
-const DATA_URL = /^data:(image\/[a-z0-9.+-]+);base64,(.*)$/is;
-const BASE64 = /^[A-Za-z0-9+/]*={0,2}$/;
-const MEDIA_TYPE = /^image\/[a-z0-9.+-]+$/i;
-
 /**
  * Makes an image for a state: `ask.if({ photo: image(bytes), note }, "is damaged")`.
  *
- * `input` is raw bytes, a base64 string, or a `data:image/...;base64,` URL. For raw bytes and base64,
- * the media type is detected (PNG, JPEG, WebP, GIF) unless you pass it.
+ * `input` is raw bytes, a base64 or base64url string, or a `data:image/...;base64,` URL. For raw bytes and
+ * base64, the media type is detected (PNG, JPEG, WebP, GIF) unless you pass it. Stored data is standard base64.
  */
 export const image = (input: Uint8Array | string, mediaType?: string): Image => {
-  let data: string;
+  let data: string | undefined;
   let type = mediaType;
   if (typeof input === "string") {
     const url = DATA_URL.exec(input);
-    data = url?.[2] ?? input;
-    type ??= url?.[1] ?? sniff(headOf(data));
+    data = canonicalizeBase64(url?.[2] ?? input);
+    type ??= url?.[1] ?? (data === undefined ? undefined : sniff(headOf(data)));
   } else {
     data = toBase64(input);
     type ??= sniff(input);
@@ -67,7 +78,7 @@ export const image = (input: Uint8Array | string, mediaType?: string): Image => 
         : `"${type}" is not an image media type.`,
     );
   }
-  if (data.length === 0 || !BASE64.test(data)) {
+  if (data === undefined || !STANDARD_BASE64.test(data)) {
     throw makeAskError("UNSUPPORTED_INPUT", "The image data is empty or not valid base64.");
   }
   return { type: "image", source: { kind: "base64", mediaType: type.toLowerCase(), data } };
