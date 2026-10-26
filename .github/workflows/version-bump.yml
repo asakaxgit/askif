@@ -64,16 +64,17 @@ jobs:
           SUMMARY: ${{ inputs.summary }}
         run: |
           pnpm exec tsx .github/scripts/create-changeset.ts "$PACKAGES" "$BUMP" "$SUMMARY"
+          delim="EOF_$(openssl rand -hex 16)"
           {
-            echo "packages<<EOF"
+            echo "packages<<${delim}"
             echo "$PACKAGES"
-            echo "EOF"
-            echo "bump<<EOF"
+            echo "${delim}"
+            echo "bump<<${delim}"
             echo "$BUMP"
-            echo "EOF"
-            echo "summary<<EOF"
+            echo "${delim}"
+            echo "summary<<${delim}"
             echo "$SUMMARY"
-            echo "EOF"
+            echo "${delim}"
           } >> "$GITHUB_OUTPUT"
 
       - name: Open a PR with the changeset

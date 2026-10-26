@@ -140,6 +140,8 @@ type Pending = {
   readonly state: State;
   /** Images in `state`. A repeated state contributes this once per request. */
   readonly imageCount: number;
+  /** One injection scan of `state`, shared by every question in the batch. */
+  readonly suspected: boolean;
   readonly context: DecisionContext;
   readonly resolve: (answer: Answer) => void;
   readonly reject: (error: unknown) => void;
@@ -154,6 +156,8 @@ type Ticket = {
 type Batch = {
   readonly backend: Backend;
   readonly state: State;
+  /** One injection scan for this reduced state. Later questions reuse it. */
+  readonly suspected: boolean;
   readonly items: Pending[];
 };
 
@@ -237,7 +241,12 @@ export const createAsk = (init: { readonly backend: Backend } & AskOptions): Ask
       if (first !== undefined) await send(backend, first.state, items);
       return;
     }
-    const payload = items.map((item, i) => ({ id: `q${i}`, state: item.state, question: item.question }));
+    const payload = items.map((item, i) => ({
+      id: `q${i}`,
+      state: item.state,
+      question: item.question,
+      suspected: item.suspected,
+    }));
     try {
       const results = await decideMany(payload, items[0]?.context);
       const byId = new Map(results.map((result) => [result.id, result]));
@@ -341,7 +350,11 @@ export const createAsk = (init: { readonly backend: Backend } & AskOptions): Ask
           protection: protection !== false,
           images: protection === false ? "auto" : protection.images,
         };
-        suspected = protection !== false && looksInjected(reduced);
+        const byState = queues.get(backend) ?? new Map<string, Batch>();
+        const key = JSON.stringify([reduced, context]);
+        const existing = byState.get(key);
+        // One scan per reduced state. A chain of conditions on that state reuses the first result.
+        suspected = existing !== undefined ? existing.suspected : protection !== false && looksInjected(reduced);
         routeUnsure = protection !== false && protection.unsureOnInjection && suspected;
         const imageCount = extractImages(reduced, context.images === "explicit" ? { only: "image" } : {}).images.length;
         const problem = imageProblem(backend, imageCount);
@@ -349,12 +362,10 @@ export const createAsk = (init: { readonly backend: Backend } & AskOptions): Ask
           reject(makeAskError("UNSUPPORTED_INPUT", problem));
           return;
         }
-        const byState = queues.get(backend) ?? new Map<string, Batch>();
         queues.set(backend, byState);
-        const key = JSON.stringify([reduced, context]);
-        const batch = byState.get(key) ?? { backend, state: reduced, items: [] };
+        const batch = existing ?? { backend, state: reduced, items: [], suspected };
         byState.set(key, batch);
-        batch.items.push({ question, state: reduced, imageCount, context, resolve, reject });
+        batch.items.push({ question, state: reduced, imageCount, context, suspected, resolve, reject });
         if (!flushScheduled) {
           flushScheduled = true;
           // Two hops: chains start on the next microtask, so a direct call like

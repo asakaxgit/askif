@@ -454,6 +454,47 @@ test("a state fence breakout stays inside the nonce tag", async () => {
   assert.ok(open < close);
 });
 
+test("the state fence escape matches the old replacement and a long space run stays fast", async () => {
+  const previous = /<\s*(\/?)\s*state\b/gi;
+  const current = /<\s*(?:(\/)\s*)?state\b/gi;
+  const samples = [
+    "<state>",
+    "</state-abc>",
+    "< / STATE >",
+    "<\n\t/\n state x",
+    "<state",
+    "</ state",
+    "<stateful>",
+    "a<b state",
+    "<<state>",
+    "< /state",
+    "<  state",
+  ];
+  for (const sample of samples) {
+    assert.equal(sample.replace(current, "‹$1state"), sample.replace(previous, "‹$1state"), sample);
+  }
+  const raws: string[] = [];
+  const ask = createAsk({ backend: openai({ client: rawClient(raws) }) });
+  const packed = samples.join("\n");
+  await ask.is(packed, "ok");
+  const fenced = raws[0];
+  assert.ok(fenced);
+  assert.equal(userText(fenced).includes(packed.replace(current, "‹$1state")), true);
+
+  const short = `<${" ".repeat(1_000)}`;
+  const long = `<${" ".repeat(49_000)}`;
+  const elapsed = async (state: string): Promise<number> => {
+    const start = performance.now();
+    await ask.is(state, "ok");
+    return performance.now() - start;
+  };
+  const baseline = await elapsed(short);
+  const ms = await elapsed(long);
+  // The old pattern took about 2s on 49k spaces and about 10s on four such fields.
+  assert.ok(ms < 500, `fence took ${ms.toFixed(1)}ms`);
+  assert.ok(ms < baseline * 80 + 50, `fence ${ms.toFixed(1)}ms vs ${baseline.toFixed(1)}ms baseline`);
+});
+
 test("an object value containing a state tag is escaped inside the fence", async () => {
   const raws: string[] = [];
   await openai({ client: rawClient(raws) }).decide(

@@ -1,5 +1,13 @@
 import { makeAskError } from "./errors.js";
-import { DATA_URL, extractImages, isContentImage, isImage } from "./image.js";
+import {
+  DATA_URL,
+  extractImages,
+  isContentImage,
+  isImage,
+  isStandardImageDataUrl,
+  isStandardImagePayload,
+  isTrustedImage,
+} from "./image.js";
 import type { Description, Json, ProtectionConfig, ProtectionOverride, State } from "./types.js";
 
 /**
@@ -20,6 +28,42 @@ export const DEFAULT_PROTECTION = {
   images: "auto",
   unsureOnInjection: true,
 } as const satisfies ProtectionConfig;
+
+/**
+ * Largest untrusted image payload, in characters.
+ * Clef's per-image file limit is 4 MiB, the smallest published in this repo (Jev allows 16 MiB).
+ * Base64 is longer than the file, so a payload under this stays under that file limit.
+ * Values returned by `image()` are not counted against it.
+ */
+export const UNTRUSTED_IMAGE_CHARS = 4 * 1024 * 1024;
+
+/**
+ * Total characters of untrusted image payloads kept in one state.
+ * Jev's whole-request file budget is 32 MiB. Base64 is longer than the file, so 16 MiB of
+ * characters stays under it. Values returned by `image()` are not counted.
+ */
+export const UNTRUSTED_IMAGE_TOTAL_CHARS = 16 * 1024 * 1024;
+
+/**
+ * Most untrusted images kept in one state.
+ * Above Jev's 64, so a backend that cannot take that many still reports its own limit.
+ * The character budget is what stops a run of large images. Values returned by `image()` are not counted.
+ */
+export const UNTRUSTED_IMAGE_COUNT = 256;
+
+const refusedImage = (chars: number): string => `[refused image: ${chars} chars]`;
+
+type UntrustedBudget = { chars: number; count: number };
+
+/** Per-image cap, then the shared character budget and the count. A miss does not consume either. */
+const admitUntrusted = (data: string, budget: UntrustedBudget): boolean => {
+  if (data.length > UNTRUSTED_IMAGE_CHARS) return false;
+  if (budget.count >= UNTRUSTED_IMAGE_COUNT) return false;
+  if (budget.chars + data.length > UNTRUSTED_IMAGE_TOTAL_CHARS) return false;
+  budget.count += 1;
+  budget.chars += data.length;
+  return true;
+};
 
 export const effectiveProtection = (
   base: ProtectionConfig | false,
@@ -107,19 +151,58 @@ export const clipUntrusted = (text: string, max = 200): string => {
   return stripped.slice(0, Math.max(0, end));
 };
 
-const keepImageString = (value: string, p: ProtectionConfig): boolean => p.images === "auto" && DATA_URL.test(value);
-
-const walkState = (value: Json, p: ProtectionConfig): Json => {
-  if (typeof value === "string") return keepImageString(value, p) ? value : sanitizeText(value, p);
+const walkState = (value: Json, p: ProtectionConfig, budget: UntrustedBudget): Json => {
+  if (typeof value === "string") {
+    if (DATA_URL.test(value)) {
+      const payload = DATA_URL.exec(value)?.[2];
+      const n = payload === undefined ? value.length : payload.length;
+      // Kept only when the payload is standard base64, so this string has no hidden characters.
+      const keep =
+        p.images === "auto" &&
+        payload !== undefined &&
+        isStandardImageDataUrl(value) &&
+        admitUntrusted(payload, budget);
+      if (keep) return value;
+      // Explicit mode keeps a short data URL as text, after the same cleaning as any other string.
+      if (p.images === "explicit" && (!Number.isFinite(p.maxStringChars) || value.length <= p.maxStringChars)) {
+        return sanitizeText(value, p);
+      }
+      return refusedImage(n);
+    }
+    const cleaned = sanitizeText(value, p);
+    // Hidden characters can reveal a data URL. Do not forward that payload as text.
+    if (p.images === "auto" && DATA_URL.test(cleaned)) return refusedImage(cleaned.length);
+    return cleaned;
+  }
   if (typeof value !== "object" || value === null) return value;
-  if (Array.isArray(value)) return value.map((entry) => walkState(entry, p));
-  if (isImage(value) || (p.images === "auto" && isContentImage(value))) return value;
-  return Object.fromEntries(Object.entries(value).map(([key, entry]) => [sanitizeText(key, p), walkState(entry, p)]));
+  if (Array.isArray(value)) return value.map((entry) => walkState(entry, p, budget));
+  if (isImage(value)) {
+    const data = value.source.data;
+    const valid = isStandardImagePayload(value.source.mediaType, data);
+    if (isTrustedImage(value)) return valid ? value : refusedImage(data.length);
+    if (p.images === "auto") {
+      if (valid && admitUntrusted(data, budget)) return value;
+      return refusedImage(data.length);
+    }
+    // Explicit mode lifts only image(). A look-alike stays text: clean its fields, or refuse a long payload.
+    if (!valid || (Number.isFinite(p.maxStringChars) && data.length > p.maxStringChars)) return refusedImage(data.length);
+  } else if (isContentImage(value)) {
+    const data = value.base64;
+    const valid = isStandardImagePayload(value.content_type, data);
+    if (!valid) return refusedImage(data.length);
+    if (p.images === "auto") return admitUntrusted(data, budget) ? value : refusedImage(data.length);
+    if (Number.isFinite(p.maxStringChars) && data.length > p.maxStringChars) return refusedImage(data.length);
+    // Short, standard base64. Explicit mode does not lift this shape, and the alphabet has no hidden characters.
+    return value;
+  }
+  return Object.fromEntries(
+    Object.entries(value).map(([key, entry]) => [sanitizeText(key, p), walkState(entry, p, budget)]),
+  );
 };
 
-/** Walk a state and clean every string value and object key. Images are left untouched. */
+/** Walk a state and clean every string value and object key. Trusted `image()` values stay intact. */
 export const reduceState = (state: State, p: ProtectionConfig): State => {
-  const reduced = walkState(state, p);
+  const reduced = walkState(state, p, { chars: 0, count: 0 });
   if (Number.isFinite(p.maxStateChars)) {
     const measured = extractImages(reduced, p.images === "explicit" ? { only: "image" } : {}).state;
     const n = JSON.stringify(measured).length;
@@ -144,11 +227,14 @@ const walkDescription = (value: Description): Description => {
 export const reduceDescription = (description: Description, p: ProtectionConfig | false): Description =>
   p === false || !p.stripHidden ? description : walkDescription(description);
 
-/** Known injection markers, matched case-insensitively on the reduced state's text. */
+/**
+ * Known injection markers, matched case-insensitively on the reduced state's text.
+ * Repeats are bounded and do not cross newlines, so a long run of spaces or newlines stays linear.
+ */
 export const INJECTION_MARKERS: readonly RegExp[] = [
   /\b(ignore|disregard|forget|override)\b[^.\n]{0,40}\b(previous|prior|above|earlier|all|the)\b[^.\n]{0,20}\b(instructions?|rules?|prompts?|questions?)\b/i,
-  /<\s*\/?\s*(state|system|assistant|user|developer|instructions?)\b[^>]*>/i,
-  /^\s*(system|assistant|developer)\s*:/im,
+  /<[^\S\n]{0,20}\/?[^\S\n]{0,20}(state|system|assistant|user|developer|instructions?)\b[^>\n]{0,200}>/i,
+  /^[^\S\n]{0,20}(system|assistant|developer)[^\S\n]{0,20}:/im,
   /\b(answer|respond|output|return|reply)\b[^.\n]{0,30}\b(probability|yes|no|1(\.0)?|100\s*%)\b[^.\n]{0,15}$/im,
   /\b(you are now|new instructions|jailbreak|prompt injection)\b/i,
 ];

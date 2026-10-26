@@ -9,6 +9,19 @@ const GIF = Uint8Array.from([0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 1, 0, 1, 0]);
 const WEBP = Uint8Array.from([0x52, 0x49, 0x46, 0x46, 4, 0, 0, 0, 0x57, 0x45, 0x42, 0x50, 0x56, 0x50]);
 const b64 = (bytes: Uint8Array): string => btoa(String.fromCharCode(...bytes));
 
+test("image() freezes the object it returns", () => {
+  const photo = image(PNG);
+  assert.equal(Object.isFrozen(photo), true);
+  assert.equal(Object.isFrozen(photo.source), true);
+  assert.equal(Reflect.set(photo, "type", "text"), false);
+  assert.equal(Reflect.set(photo.source, "data", "QQ=="), false);
+  assert.equal(photo.type, "image");
+  assert.equal(photo.source.data, b64(PNG));
+  const copy = structuredClone(photo);
+  assert.equal(Object.isFrozen(copy), false);
+  assert.notEqual(copy, photo);
+});
+
 test("image() detects the format from the bytes, as bytes or as base64", () => {
   for (const [bytes, mediaType] of [
     [PNG, "image/png"],
@@ -44,6 +57,20 @@ test("image() rejects what it can't make sense of", () => {
   assert.throws(() => image(b64(PNG), "text/plain"), unsupported);
   assert.throws(() => image("not base64 !!", "image/png"), unsupported);
   assert.throws(() => image("", "image/png"), unsupported);
+});
+
+test("image() rejects a long run of padding quickly", () => {
+  const elapsed = (n: number): number => {
+    const input = `${"=".repeat(n)}A`;
+    const start = performance.now();
+    assert.throws(() => image(input, "image/png"));
+    return performance.now() - start;
+  };
+  const baseline = elapsed(1_000);
+  const ms = elapsed(50_000);
+  // `=+$` took about 1.5s at 50k and about 24s at 200k.
+  assert.ok(ms < 200, `image() took ${ms.toFixed(1)}ms`);
+  assert.ok(ms < baseline * 80 + 50, `image() ${ms.toFixed(1)}ms vs ${baseline.toFixed(1)}ms baseline`);
 });
 
 test("isImage() recognises images built by image() and nothing else", () => {

@@ -91,9 +91,13 @@ const nonceFor = (rendered: string): string => {
   return nonceBytes();
 };
 
-/** Neutralise `<state` / `</state` look-alikes, then wrap the text in a per-request tag. */
+/**
+ * Neutralise `<state` / `</state` look-alikes, then wrap the text in a per-request tag.
+ * The slash is one optional group, not two open-ended `\s*`, so a long space run stays linear.
+ * `$1` is `/` or empty, the same replacement as `<\s*(\/?)\s*state`.
+ */
 const fence = (text: string, nonce: string): string => {
-  const escaped = text.replace(/<\s*(\/?)\s*state\b/gi, "‹$1state");
+  const escaped = text.replace(/<\s*(?:(\/)\s*)?state\b/gi, "‹$1state");
   return `<state-${nonce}>\n${escaped}\n</state-${nonce}>`;
 };
 

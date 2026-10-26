@@ -35,14 +35,51 @@ export const DATA_URL = /^data:(image\/[a-z0-9.+-]+);base64,(.*)$/is;
 const STANDARD_BASE64 = /^[A-Za-z0-9+/]*={0,2}$/;
 const MEDIA_TYPE = /^image\/[a-z0-9.+-]+$/i;
 
+/** Standard base64 (no whitespace, no base64url). Protection uses this before it skips a size cap. */
+export const isStandardBase64 = (data: string): boolean => STANDARD_BASE64.test(data);
+
+/**
+ * True when `value` is an image data URL whose payload is standard base64.
+ * Protection uses this before it skips cleaning and the size caps.
+ */
+export const isStandardImageDataUrl = (value: string): boolean => {
+  const match = DATA_URL.exec(value);
+  const media = match?.[1];
+  const payload = match?.[2];
+  return media !== undefined && payload !== undefined && MEDIA_TYPE.test(media) && isStandardBase64(payload);
+};
+
+/** Media type plus standard base64. Size is checked by the caller, which knows the cap. */
+export const isStandardImagePayload = (mediaType: string, data: string): boolean =>
+  MEDIA_TYPE.test(mediaType) && isStandardBase64(data);
+
+/** At most two trailing `=`. A longer run is rejected in one pass; `=+$` backtracks. */
+const withoutPadding = (data: string): string | undefined => {
+  let end = data.length;
+  let pads = 0;
+  while (end > 0 && data.charCodeAt(end - 1) === 61) {
+    pads += 1;
+    if (pads > 2) return undefined;
+    end -= 1;
+  }
+  return data.slice(0, end);
+};
+
 /**
  * Standard base64 with padding, or undefined.
  * Accepts base64url (`-`/`_`, padding optional): sniffing already did, validation did not.
  */
 const canonicalizeBase64 = (data: string): string | undefined => {
   if (data.length === 0 || /[^A-Za-z0-9+/_=-]/.test(data)) return undefined;
-  const unpadded = data.replace(/-/g, "+").replace(/_/g, "/").replace(/=+$/, "");
-  if (unpadded.length === 0 || unpadded.length % 4 === 1 || !/^[A-Za-z0-9+/]+$/.test(unpadded)) return undefined;
+  const unpadded = withoutPadding(data.replace(/-/g, "+").replace(/_/g, "/"));
+  if (
+    unpadded === undefined ||
+    unpadded.length === 0 ||
+    unpadded.length % 4 === 1 ||
+    !/^[A-Za-z0-9+/]+$/.test(unpadded)
+  ) {
+    return undefined;
+  }
   return unpadded + "=".repeat((4 - (unpadded.length % 4)) % 4);
 };
 
@@ -82,8 +119,18 @@ export const image = (input: Uint8Array | string, mediaType?: string): Image => 
   if (data === undefined || !STANDARD_BASE64.test(data)) {
     throw makeAskError("UNSUPPORTED_INPUT", "The image data is empty or not valid base64.");
   }
-  return { type: "image", source: { kind: "base64", mediaType: type.toLowerCase(), data } };
+  const made: Image = { type: "image", source: { kind: "base64", mediaType: type.toLowerCase(), data } };
+  Object.freeze(made.source);
+  Object.freeze(made);
+  trustedImages.add(made);
+  return made;
 };
+
+/** Objects `image()` returned. A JSON look-alike is not in this set. */
+const trustedImages = new WeakSet<object>();
+
+/** True for the object `image()` returned, not for a copy or a parsed look-alike. */
+export const isTrustedImage = (value: object): boolean => trustedImages.has(value);
 
 /** A `{ content_type, base64 }` pair `extractImages` treats as an image in `"auto"` mode. */
 export const isContentImage = (value: unknown): value is { readonly content_type: string; readonly base64: string } =>
@@ -101,8 +148,9 @@ export type ExtractImagesOptions = {
    */
   readonly from?: number;
   /**
-   * `"image"` lifts only `image()` values. Data-URL strings and `{ content_type, base64 }`
-   * objects stay text. Omit it for today's behaviour.
+   * `"image"` lifts only values `image()` returned. A look-alike stays in the state as text.
+   * Data-URL strings and `{ content_type, base64 }` objects stay text either way.
+   * Omit it for today's behaviour.
    */
   readonly only?: "image";
 };
@@ -131,7 +179,9 @@ export const extractImages = (
     }
     if (Array.isArray(value)) return value.map(walk);
     if (value !== null && typeof value === "object") {
-      if (isImage(value)) return placeholder(value.source.mediaType, value.source.data);
+      if (isImage(value) && (!explicit || isTrustedImage(value))) {
+        return placeholder(value.source.mediaType, value.source.data);
+      }
       if (!explicit && isContentImage(value)) return placeholder(value.content_type, value.base64);
       return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, walk(entry)]));
     }
