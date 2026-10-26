@@ -84,16 +84,29 @@ export const image = (input: Uint8Array | string, mediaType?: string): Image => 
   return { type: "image", source: { kind: "base64", mediaType: type.toLowerCase(), data } };
 };
 
+export type ExtractImagesOptions = {
+  /**
+   * Number of the first `[image N]` in this state. Default 1.
+   * When several states share one image list, continue from the previous state's count
+   * so `[image N]` is the Nth image in that list. Count a repeated state once.
+   */
+  readonly from?: number;
+};
+
 /**
  * Moves every image out of a state, for backends: each becomes `[image N]` (N from 1, in the order
  * found) and is returned in `images`. Besides `image()` values, it picks up a base64 image data URL
  * string and a `{ content_type, base64 }` object wherever they appear.
  */
-export const extractImages = (state: Json): { readonly state: Json; readonly images: readonly Image[] } => {
+export const extractImages = (
+  state: Json,
+  options?: ExtractImagesOptions,
+): { readonly state: Json; readonly images: readonly Image[] } => {
   const images: Image[] = [];
+  const start = options?.from ?? 1;
   const placeholder = (mediaType: string, data: string): string => {
     images.push({ type: "image", source: { kind: "base64", mediaType: mediaType.toLowerCase(), data } });
-    return `[image ${images.length}]`;
+    return `[image ${start + images.length - 1}]`;
   };
   const walk = (value: Json): Json => {
     if (typeof value === "string") {

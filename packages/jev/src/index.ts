@@ -7,17 +7,22 @@ import type {
   TypeSafeClientConfig,
 } from "@typesafe-ai/sdk";
 import { createAsk, makeAskError } from "askif";
-import type { Answer, Backend, Json, Question } from "askif";
+import type { Answer, Backend, DecisionItem, ItemResult, Json, Question, QuestionResult } from "askif";
 
 export type JevOptions = TypeSafeClientConfig & {
   /** Model id, e.g. "jev-1.13". Default: the client's default, "jev-latest". */
   readonly model?: string;
   /** Use an existing client instead of creating one. */
   readonly client?: TypeSafeClient;
+  /**
+   * Pack different states from the same tick into one `systemOne` call.
+   * Default: false. Set true to opt in.
+   */
+  readonly multiState?: boolean;
 };
 
-/** Limits documented for jev-1.13. */
-const LIMITS = { maxOptions: 255, maxLevels: 10 } as const;
+/** Limits documented for jev-1.13. `maxStatesPerCall` is this backend's own cap on cross-state batches. */
+const LIMITS = { maxOptions: 255, maxLevels: 10, maxStatesPerCall: 32 } as const;
 
 // The question/answer mapping below mirrors packages/clef/src/index.ts (same System One
 // wire format). Change both together; the shared fixture in
@@ -101,6 +106,34 @@ const fromTypesafe = (
   throw makeAskError("BAD_RESPONSE", `TypeSafe returned no ${question.kind} answer.`);
 };
 
+const isFailure = (result: QuestionResult): result is { readonly error: unknown } => !("kind" in result);
+
+/** Point a question at one entry of a composite `{ items }` state. The caller's question is left unchanged. */
+const scopeQuestion = (question: Question, item: string): Question => {
+  const instructions = {
+    about: `items.${item}`,
+    note: `Answer only about items.${item}. Ignore every other item. "The state" means items.${item}.`,
+    // Same representation a one-state call would send: numbers and booleans become text.
+    question: toEntry(question.instructions),
+  };
+  switch (question.kind) {
+    case "yesno":
+      return { ...question, instructions };
+    case "choice":
+      return { ...question, instructions };
+    case "scale":
+      return { ...question, instructions };
+    default:
+      return question satisfies never;
+  }
+};
+
+const toItemResult = (id: string, result: QuestionResult | undefined): ItemResult => {
+  if (result === undefined) return { id, error: makeAskError("BAD_RESPONSE", "TypeSafe returned no answer.") };
+  if (isFailure(result)) return { id, error: result.error };
+  return { id, answer: result };
+};
+
 /**
  * Backend for TypeSafe System One models such as Jev.
  *
@@ -108,7 +141,7 @@ const fromTypesafe = (
  * needed when this backend is actually used.
  */
 export const jev = (options: JevOptions = {}): Backend => {
-  const { model, client, ...clientConfig } = options;
+  const { model, client, multiState = false, ...clientConfig } = options;
   let clientPromise: Promise<TypeSafeClient> | undefined;
 
   const loadClient = async (): Promise<TypeSafeClient> => {
@@ -130,22 +163,71 @@ export const jev = (options: JevOptions = {}): Backend => {
       throw error;
     }));
 
+  // `wire` is what the model reads. `original` is what the answer is checked against,
+  // so a rewritten question still validates as the caller's question.
+  const answerAll = async (
+    state: EntryType,
+    wire: Readonly<Record<string, Question>>,
+    original: Readonly<Record<string, Question>>,
+  ): Promise<Readonly<Record<string, QuestionResult>>> => {
+    const typesafeQuestions: TypeSafeQuestions = Object.fromEntries(
+      Object.entries(wire).map(([id, q]) => [id, toTypesafe(q)]),
+    );
+    const response = await (await getClient()).systemOne({
+      state,
+      questions: typesafeQuestions,
+      ...(model === undefined ? {} : { model }),
+    });
+    const results: { [id: string]: QuestionResult } = {};
+    for (const [id, question] of Object.entries(original)) {
+      try {
+        results[id] = fromTypesafe(question, response.answers[id]);
+      } catch (error) {
+        results[id] = { error };
+      }
+    }
+    return results;
+  };
+
+  const decideMany = async (items: readonly DecisionItem[]): Promise<readonly ItemResult[]> => {
+    const first = items[0];
+    if (first === undefined) return [];
+    const itemKey = new Map<string, string>();
+    const entries: { readonly key: string; readonly state: EntryType }[] = [];
+    for (const item of items) {
+      const stable = JSON.stringify(item.state);
+      if (itemKey.has(stable)) continue;
+      const key = `i${itemKey.size}`;
+      itemKey.set(stable, key);
+      entries.push({ key, state: toEntry(item.state) });
+    }
+    // A single state stays on the normal wire format. Cross-state calls are the ones that get packed.
+    if (itemKey.size < 2) {
+      const questions = Object.fromEntries(items.map((item) => [item.id, item.question]));
+      const results = await answerAll(toEntry(first.state), questions, questions);
+      return items.map((item) => toItemResult(item.id, results[item.id]));
+    }
+    const scoped: { [id: string]: Question } = {};
+    const original: { [id: string]: Question } = {};
+    for (const item of items) {
+      const key = itemKey.get(JSON.stringify(item.state));
+      if (key === undefined) continue;
+      scoped[item.id] = scopeQuestion(item.question, key);
+      original[item.id] = item.question;
+    }
+    const results = await answerAll(
+      { items: Object.fromEntries(entries.map((entry) => [entry.key, entry.state])) },
+      scoped,
+      original,
+    );
+    return items.map((item) => toItemResult(item.id, results[item.id]));
+  };
+
   return {
     name: "jev",
     limits: LIMITS,
-    decide: async (state, questions) => {
-      const typesafeQuestions: TypeSafeQuestions = Object.fromEntries(
-        Object.entries(questions).map(([id, q]) => [id, toTypesafe(q)]),
-      );
-      const response = await (await getClient()).systemOne({
-        state: toEntry(state),
-        questions: typesafeQuestions,
-        ...(model === undefined ? {} : { model }),
-      });
-      return Object.fromEntries(
-        Object.entries(questions).map(([id, q]) => [id, fromTypesafe(q, response.answers[id])]),
-      );
-    },
+    ...(multiState ? { multiState: true as const, decideMany } : {}),
+    decide: async (state, questions) => answerAll(toEntry(state), questions, questions),
   };
 };
 

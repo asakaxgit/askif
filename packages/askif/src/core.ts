@@ -1,4 +1,5 @@
 import { isAskError, makeAskError } from "./errors.js";
+import type { AskError } from "./errors.js";
 import { extractImages } from "./image.js";
 import type {
   Answer,
@@ -20,6 +21,7 @@ import type {
   IfThenResult,
   IfUnsureResult,
   Question,
+  QuestionResult,
   Ranked,
   ScaleAnswer,
   ScaleQuestion,
@@ -39,6 +41,7 @@ const DEFAULTS = {
   unsureBand: [0.2, 0.8],
   minConfidence: 0.5,
   maxBatchSize: 32,
+  maxStatesPerBatch: 16,
 } as const satisfies Omit<AskConfig, "backend">;
 
 const OTHER_DESCRIPTION = "None of the other options fit";
@@ -124,6 +127,9 @@ const checkCount = (what: "options" | "levels", count: number, max: number | und
 
 type Pending = {
   readonly question: Question;
+  readonly state: State;
+  /** Images in `state`. A repeated state contributes this once per request. */
+  readonly imageCount: number;
   readonly resolve: (answer: Answer) => void;
   readonly reject: (error: unknown) => void;
 };
@@ -156,48 +162,137 @@ export const createAsk = (
   const queues = new Map<Backend, Map<string, Batch>>();
   let flushScheduled = false;
 
-  const send = async (batch: Batch, items: readonly Pending[]): Promise<void> => {
+  const questionLimit = (backend: Backend): number =>
+    Math.max(1, Math.min(config.maxBatchSize, backend.limits?.maxQuestionsPerCall ?? Infinity));
+
+  // Backends that don't opt in stay at one state per call, whatever the config says.
+  const stateLimit = (backend: Backend): number => {
+    if (backend.multiState !== true || backend.decideMany === undefined) return 1;
+    return Math.max(1, Math.min(config.maxStatesPerBatch, backend.limits?.maxStatesPerCall ?? Infinity));
+  };
+
+  const rejectAll = (backend: Backend, items: readonly Pending[], error: unknown): void => {
+    const wrapped = isAskError(error)
+      ? error
+      : makeAskError("BACKEND_FAILED", `The ${backend.name} backend failed.`, error);
+    items.forEach((item) => item.reject(wrapped));
+  };
+
+  const badAnswer = (backend: Backend, item: Pending, cause?: unknown): AskError => {
+    if (isAskError(cause)) return cause;
+    return makeAskError(
+      "BAD_RESPONSE",
+      `The ${backend.name} backend returned no ${item.question.kind} answer for a question.`,
+      cause,
+    );
+  };
+
+  const isFailure = (result: QuestionResult): result is { readonly error: unknown } => !("kind" in result);
+
+  const accept = (backend: Backend, item: Pending, result: QuestionResult | undefined): void => {
+    if (result === undefined || isFailure(result)) {
+      item.reject(badAnswer(backend, item, result === undefined ? undefined : result.error));
+      return;
+    }
+    if (result.kind === item.question.kind) item.resolve(result);
+    else item.reject(badAnswer(backend, item));
+  };
+
+  const send = async (backend: Backend, state: State, items: readonly Pending[]): Promise<void> => {
     const questions = Object.fromEntries(items.map((item, i) => [`q${i}`, item.question]));
     try {
-      const answers = await batch.backend.decide(batch.state, questions);
+      const answers = await backend.decide(state, questions);
+      items.forEach((item, i) => accept(backend, item, answers[`q${i}`]));
+    } catch (error) {
+      rejectAll(backend, items, error);
+    }
+  };
+
+  const sendMany = async (backend: Backend, items: readonly Pending[]): Promise<void> => {
+    const decideMany = backend.decideMany;
+    const first = items[0];
+    const distinct = new Set(items.map((item) => JSON.stringify(item.state)));
+    // One state keeps the original `decide` wire format: no composite, no rewritten question.
+    if (decideMany === undefined || first === undefined || distinct.size < 2) {
+      if (first !== undefined) await send(backend, first.state, items);
+      return;
+    }
+    const payload = items.map((item, i) => ({ id: `q${i}`, state: item.state, question: item.question }));
+    try {
+      const results = await decideMany(payload);
+      const byId = new Map(results.map((result) => [result.id, result]));
       items.forEach((item, i) => {
-        const answer = answers[`q${i}`];
-        if (answer?.kind === item.question.kind) item.resolve(answer);
-        else {
-          item.reject(
-            makeAskError(
-              "BAD_RESPONSE",
-              `The ${batch.backend.name} backend returned no ${item.question.kind} answer for a question.`,
-            ),
-          );
-        }
+        const result = byId.get(`q${i}`);
+        if (result === undefined) accept(backend, item, undefined);
+        else if ("error" in result) accept(backend, item, { error: result.error });
+        else accept(backend, item, result.answer);
       });
     } catch (error) {
-      const wrapped = isAskError(error)
-        ? error
-        : makeAskError("BACKEND_FAILED", `The ${batch.backend.name} backend failed.`, error);
-      items.forEach((item) => item.reject(wrapped));
+      rejectAll(backend, items, error);
     }
+  };
+
+  // Items arrive grouped by state (first-seen state, then that state's questions, in call order).
+  // A chunk closes when another question would pass the question limit, another state would pass
+  // the state limit, or another state's images would pass maxImages. Images are counted once per
+  // distinct state. States are not rewritten: `[image N]` stays local to each state.
+  const pack = (
+    items: readonly Pending[],
+    maxQuestions: number,
+    maxStates: number,
+    maxImages: number,
+  ): Pending[][] => {
+    const chunks: Pending[][] = [];
+    let current: Pending[] = [];
+    const states = new Set<string>();
+    let images = 0;
+    const close = (): void => {
+      if (current.length === 0) return;
+      chunks.push(current);
+      current = [];
+      states.clear();
+      images = 0;
+    };
+    for (const item of items) {
+      const key = JSON.stringify(item.state);
+      const seen = states.has(key);
+      const addsImages = seen ? 0 : item.imageCount;
+      const overBudget =
+        current.length >= maxQuestions ||
+        (!seen && states.size >= maxStates) ||
+        (addsImages > 0 && images + addsImages > maxImages);
+      if (current.length > 0 && overBudget) close();
+      // Membership is checked again: a chunk that just closed does not already contain this state.
+      if (!states.has(key)) images += item.imageCount;
+      current.push(item);
+      states.add(key);
+    }
+    close();
+    return chunks;
   };
 
   const flush = (): void => {
     flushScheduled = false;
-    const batches = [...queues.values()].flatMap((byState) => [...byState.values()]);
+    const pending = [...queues.entries()];
     queues.clear();
-    batches.forEach((batch) => {
-      const size = Math.max(
-        1,
-        Math.min(config.maxBatchSize, batch.backend.limits?.maxQuestionsPerCall ?? Infinity),
-      );
-      for (let i = 0; i < batch.items.length; i += size) {
-        void send(batch, batch.items.slice(i, i + size));
+    for (const [backend, byState] of pending) {
+      const items = [...byState.values()].flatMap((batch) => batch.items);
+      const maxQuestions = questionLimit(backend);
+      const maxStates = stateLimit(backend);
+      const maxImages = backend.limits?.maxImages ?? 0;
+      const many = maxStates > 1 && backend.decideMany !== undefined;
+      for (const chunk of pack(items, maxQuestions, maxStates, maxImages)) {
+        if (many) void sendMany(backend, chunk);
+        else {
+          const first = chunk[0];
+          if (first !== undefined) void send(backend, first.state, chunk);
+        }
       }
-    });
+    }
   };
 
   /** A state with images only goes to a backend that takes that many; otherwise base64 would be sent as text. */
-  const imageProblem = (backend: Backend, state: State): string | undefined => {
-    const found = extractImages(state).images.length;
+  const imageProblem = (backend: Backend, found: number): string | undefined => {
     const max = backend.limits?.maxImages ?? 0;
     if (found === 0 || found <= max) return undefined;
     return max === 0
@@ -207,7 +302,8 @@ export const createAsk = (
 
   const enqueue = (backend: Backend, state: State, question: Question): Promise<Answer> =>
     new Promise((resolve, reject) => {
-      const problem = imageProblem(backend, state);
+      const imageCount = extractImages(state).images.length;
+      const problem = imageProblem(backend, imageCount);
       if (problem !== undefined) {
         reject(makeAskError("UNSUPPORTED_INPUT", problem));
         return;
@@ -217,7 +313,7 @@ export const createAsk = (
       const key = JSON.stringify(state);
       const batch = byState.get(key) ?? { backend, state, items: [] };
       byState.set(key, batch);
-      batch.items.push({ question, resolve, reject });
+      batch.items.push({ question, state, imageCount, resolve, reject });
       if (!flushScheduled) {
         flushScheduled = true;
         // Two hops: chains start on the next microtask, so a direct call like

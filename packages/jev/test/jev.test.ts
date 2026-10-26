@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { TypeSafeClient } from "@typesafe-ai/sdk";
-import { createAsk } from "askif";
+import { createAsk, isAskError } from "askif";
 import type { Json } from "askif";
 import { jev } from "../src/index.js";
 import * as fixture from "../../askif/test/fixtures/system-one.js";
@@ -95,4 +95,230 @@ test("matches the shared System One contract (same fixture as @askif/clef)", asy
   assert.deepEqual(body["state"], fixture.state);
   assert.deepEqual(body["questions"], fixture.wireQuestions);
   assert.deepEqual(answers, fixture.expectedAnswers);
+});
+
+const noteFor = (item: string): string =>
+  `Answer only about items.${item}. Ignore every other item. "The state" means items.${item}.`;
+
+const scoped = (item: string, question: Json): Json => ({
+  about: `items.${item}`,
+  note: noteFor(item),
+  question,
+});
+
+const clientFor = (answers: Json, bodies: Json[]): TypeSafeClient =>
+  new TypeSafeClient({
+    apiKey: "test",
+    retry: { maxRetries: 0 },
+    fetch: async (_url, init) => {
+      bodies.push(JSON.parse(String(init?.body)));
+      return new Response(JSON.stringify({ model: "jev-1.13.0", answers, usage: { input_tokens: 1, output_tokens: 0 } }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    },
+  });
+
+test("different states in one tick become one composite systemOne call", async () => {
+  const bodies: Json[] = [];
+  const ask = createAsk({
+    backend: jev({
+      multiState: true,
+      client: clientFor(
+        {
+          q0: { type: "noul", noul: 0.93 },
+          q1: { type: "choice", choice: "cold", confidence: 0.4, probabilities: { warm: 0.2, cold: 0.8 } },
+        },
+        bodies,
+      ),
+    }),
+  });
+  const tweetA = { text: "hello" };
+  const tweetB = { text: "goodbye" };
+  const [greeting, tone] = await Promise.all([
+    ask.is(tweetA, "is a greeting"),
+    ask.switch(tweetB, "tone?").case("warm").case("cold"),
+  ]);
+
+  assert.equal(greeting, true);
+  assert.equal(tone.choice, "cold");
+  assert.equal(tone.confidence, 0.4);
+  assert.equal(bodies.length, 1);
+  const body = bodies[0];
+  assert.ok(isRecord(body));
+  assert.deepEqual(body["state"], { items: { i0: tweetA, i1: tweetB } });
+  assert.deepEqual(body["questions"], {
+    q0: {
+      type: "noul",
+      instructions: scoped("i0", {
+        condition: "is a greeting",
+        question: "Is `condition` true of the state?",
+      }),
+    },
+    q1: {
+      type: "choice",
+      instructions: scoped("i1", "tone?"),
+      criteria: { warm: null, cold: null },
+    },
+  });
+});
+
+test("decideMany packs states, keeps criteria, and stringifies scalar states", async () => {
+  const bodies: Json[] = [];
+  const backend = jev({
+    multiState: true,
+    client: clientFor(
+      {
+        odd: { type: "noul", noul: 0.99 },
+        team: { type: "choice", choice: "returns", confidence: 0.2, probabilities: { returns: 0.7, billing: 0.3 } },
+        severity: { type: "score", score: 1, confidence: 0.4, legend: { "0": "low", "1": "high" }, probabilities: { "0": 0.25, "1": 0.75 } },
+      },
+      bodies,
+    ),
+  });
+  assert.equal(backend.multiState, true);
+  assert.equal(backend.limits?.maxStatesPerCall, 32);
+  const { decideMany } = backend;
+  if (decideMany === undefined) throw new Error("expected decideMany");
+
+  const results = await decideMany([
+    { id: "odd", state: 1, question: { kind: "yesno", instructions: "odd?", criteria: { true: "not even" } } },
+    {
+      id: "team",
+      state: { text: "wrong size" },
+      question: {
+        kind: "choice",
+        instructions: "Which team?",
+        options: [
+          { key: "returns", description: "Exchanges" },
+          { key: "billing", description: null },
+        ],
+      },
+    },
+    {
+      id: "severity",
+      state: { text: "wrong size" },
+      question: { kind: "scale", instructions: "How severe?", levels: ["low", "high"] },
+    },
+  ]);
+
+  assert.deepEqual(results, [
+    { id: "odd", answer: { kind: "yesno", probability: 0.99 } },
+    { id: "team", answer: { kind: "choice", probabilities: { returns: 0.7, billing: 0.3 }, confidence: 0.2 } },
+    { id: "severity", answer: { kind: "scale", probabilities: [0.25, 0.75], confidence: 0.4 } },
+  ]);
+  const body = bodies[0];
+  assert.ok(isRecord(body));
+  // 1 is text, matching a single-state call. The two identical objects share i1.
+  assert.deepEqual(body["state"], { items: { i0: "1", i1: { text: "wrong size" } } });
+  assert.deepEqual(body["questions"], {
+    odd: {
+      type: "noul",
+      instructions: scoped("i0", "odd?"),
+      criteria: { true: "not even" },
+    },
+    team: {
+      type: "choice",
+      instructions: scoped("i1", "Which team?"),
+      criteria: { returns: "Exchanges", billing: null },
+    },
+    severity: {
+      type: "score",
+      instructions: scoped("i1", "How severe?"),
+      criteria: ["low", "high"],
+    },
+  });
+});
+
+test("one bad answer fails only that call", async () => {
+  const bodies: Json[] = [];
+  const ask = createAsk({
+    backend: jev({
+      multiState: true,
+      client: clientFor(
+        {
+          q0: { type: "noul", noul: 0.2 },
+          q1: { type: "choice", choice: "nope", confidence: 1, probabilities: {} },
+        },
+        bodies,
+      ),
+    }),
+  });
+  const [good, bad] = await Promise.allSettled([ask.is({ id: "a" }, "ok"), ask.is({ id: "b" }, "ok")]);
+  assert.equal(bodies.length, 1);
+  assert.equal(good.status, "fulfilled");
+  if (good.status === "fulfilled") assert.equal(good.value, false);
+  assert.equal(bad.status, "rejected");
+  if (bad.status === "rejected") {
+    assert.equal(isAskError(bad.reason), true);
+    if (isAskError(bad.reason)) {
+      assert.equal(bad.reason.code, "BAD_RESPONSE");
+      assert.match(bad.reason.message, /yesno/);
+    }
+  }
+});
+
+test("a failed request rejects every item in the call", async () => {
+  const ask = createAsk({
+    backend: jev({
+      multiState: true,
+      client: new TypeSafeClient({
+        apiKey: "test",
+        retry: { maxRetries: 0 },
+        fetch: async () => new Response("nope", { status: 500, headers: { "content-type": "text/plain" } }),
+      }),
+    }),
+  });
+  const [a, b] = await Promise.allSettled([ask.is("one", "ok"), ask.is("two", "ok")]);
+  for (const result of [a, b]) {
+    assert.equal(result.status, "rejected");
+    if (result.status === "rejected") {
+      assert.equal(isAskError(result.reason), true);
+      if (isAskError(result.reason)) assert.equal(result.reason.code, "BACKEND_FAILED");
+    }
+  }
+});
+
+test("multiState defaults to off", async () => {
+  const bodies: Json[] = [];
+  const backend = jev({ client: clientFor({ q0: { type: "noul", noul: 0.6 } }, bodies) });
+  assert.equal(backend.multiState, undefined);
+  assert.equal(backend.decideMany, undefined);
+  const ask = createAsk({ backend, maxStatesPerBatch: 10 });
+  const [first, second] = await Promise.all([ask.is("one", "ok"), ask.is("two", "ok")]);
+  assert.equal(first, true);
+  assert.equal(second, true);
+  assert.equal(bodies.length, 2);
+});
+
+test("multiState: false keeps one request per state", async () => {
+  const bodies: Json[] = [];
+  const backend = jev({
+    client: clientFor({ q0: { type: "noul", noul: 0.6 } }, bodies),
+    multiState: false,
+  });
+  assert.equal(backend.multiState, undefined);
+  assert.equal(backend.decideMany, undefined);
+  const ask = createAsk({ backend, maxStatesPerBatch: 10 });
+  const [first, second] = await Promise.all([ask.is("one", "ok"), ask.is("two", "ok")]);
+  assert.equal(first, true);
+  assert.equal(second, true);
+  assert.equal(bodies.length, 2);
+  const states = bodies.flatMap((body) => (isRecord(body) ? [body["state"]] : []));
+  assert.deepEqual(states.sort(), ["one", "two"]);
+});
+
+test("two questions about one state are not wrapped in items", async () => {
+  const bodies: Json[] = [];
+  const ask = createAsk({
+    backend: jev({ client: clientFor({ q0: { type: "noul", noul: 0.4 }, q1: { type: "noul", noul: 0.8 } }, bodies) }),
+  });
+  const tweet = { text: "hello" };
+  const [a, b] = await Promise.all([ask.is(tweet, "a"), ask.is({ text: "hello" }, "b")]);
+  assert.equal(a, false);
+  assert.equal(b, true);
+  assert.equal(bodies.length, 1);
+  const body = bodies[0];
+  assert.ok(isRecord(body));
+  assert.deepEqual(body["state"], tweet);
 });

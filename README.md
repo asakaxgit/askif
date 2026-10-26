@@ -193,7 +193,9 @@ A question is sent on the next microtask, once the chain is complete. Every `.ca
 
 ## Batching
 
-Calls about the **same state** made in the same tick go out as one request. Jev answers them in parallel, so extra questions barely add time. The conditions of an `.elseif()` chain are batched too. (`@askif/openai` has no native batching, so it sends one request per question instead — still in parallel, but not one HTTP call.)
+Calls made in the same tick go out in as few requests as the backend allows.
+
+Questions about the **same state** always share a request, up to `maxBatchSize` (default 32). Jev answers them together, so extra questions barely add time. The conditions of an `.elseif()` chain are included. (`@askif/openai` has no native batching, so it sends one request per question instead — still in parallel, but not one HTTP call.)
 
 ```ts
 // packages/askif/examples/batching.ts#L24-L32
@@ -207,6 +209,27 @@ await Promise.all([
   ask.if(order, "ships internationally", addCustoms),
   ask.score(order, "How urgent is delivery?").level("standard").level("express"),
 ]); // one request
+```
+
+Questions about **different states** stay in separate requests, unless the backend opts in with `multiState`. The default `mock`, `@askif/openai`, `@askif/clef`, and `@askif/jev` don't, so nothing changes until you opt in. `jev({ multiState: true })` packs same-tick calls such as `ask.score(tweetA, ...)` and `ask.if(tweetB, ...)` into one `systemOne` request. Jev's request has a single `state`, so the backend packs the states into `{ items: { i0, i1, ... } }` and points each question at its own item. Your question text stays as you wrote it.
+
+`maxStatesPerBatch` (default 16) caps how many distinct states share that call. The backend can set a lower ceiling with `limits.maxStatesPerCall` (Jev's is 32). Set `maxStatesPerBatch` to `1` to keep one request per state. A batch that happens to hold one state uses the original request shape, with no `items` wrapper.
+
+Images count across the distinct states in that call and stay within `limits.maxImages`. A state that would go over waits for the next call. Each state still numbers its own images from 1, because the state is not rewritten. A backend that attaches those images as one list should call `extractImages(state, { from })`, continuing `from` across the states in call order and counting a repeated state once, so `[image N]` is the Nth image in that list.
+
+A missing or malformed answer rejects only that call, and the answer is still checked against that call's question (kind, and the scale's length). If the request itself fails, every call in it rejects.
+
+```ts
+// packages/askif/examples/batching.ts#L49-L56
+
+const cross = mock(answer, undefined, { multiState: true });
+const crossAsk = createAsk({ backend: cross });
+const tweetA = { id: "1", text: "hello" };
+const tweetB = { id: "2", text: "goodbye" };
+await Promise.all([
+  crossAsk.if(tweetA, "is a greeting", () => {}),
+  crossAsk.score(tweetB, "How warm?").level("cold").level("warm"),
+]);
 ```
 
 ## Images
@@ -224,7 +247,7 @@ await ask.if(
 );
 ```
 
-The model sees each image where you put it, and your question can refer to it as "image 1", "image 2" (in the order they appear in the state). Same-state batching works as usual.
+The model sees each image where you put it, and your question can refer to it as "image 1", "image 2" (in the order they appear in the state). Same-state batching works as usual. A cross-state batch, when the backend opts in, still stays within that backend's `maxImages`.
 
 | Backend | Images |
 | --- | --- |
@@ -249,13 +272,14 @@ const onSpam = () => console.log("flagged as spam");
 await ask.if(state, "is spam", onSpam, { threshold: 0.9 }); // per call
 ```
 
-| Option          | Default      | Used by                                   |
-| --------------- | ------------ | ----------------------------------------- |
-| `threshold`     | `0.5`        | `ask.if`, `ask.is`                        |
-| `unsureBand`    | `[0.2, 0.8]` | `ask.if` with `.unsure()`                 |
-| `minConfidence` | `0.5`        | `ask.switch`, `ask.score` with `.unsure()` |
-| `maxBatchSize`  | `32`         | batching                                  |
-| `backend`       | TypeSafe     | everything                                |
+| Option               | Default      | Used by                                        |
+| -------------------- | ------------ | ---------------------------------------------- |
+| `threshold`          | `0.5`        | `ask.if`, `ask.is`                             |
+| `unsureBand`         | `[0.2, 0.8]` | `ask.if` with `.unsure()`                      |
+| `minConfidence`      | `0.5`        | `ask.switch`, `ask.score` with `.unsure()`     |
+| `maxBatchSize`       | `32`         | batching                                       |
+| `maxStatesPerBatch`  | `16`         | cross-state batching, on backends that opt in  |
+| `backend`            | TypeSafe     | everything                                     |
 
 ## Backends
 

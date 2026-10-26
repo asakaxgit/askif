@@ -24,5 +24,7 @@ const answers = await clef().decide(
   },
 );
 const answer = answers["q"];
-if (answer?.kind !== "yesno") throw new Error("No yes/no answer came back.");
+if (answer === undefined || !("kind" in answer) || answer.kind !== "yesno") {
+  throw new Error("No yes/no answer came back.");
+}
 console.log(`${file}: P("${condition}") = ${answer.probability.toFixed(3)}`);

@@ -79,6 +79,14 @@ test("extractImages() moves images out in order, whatever form they came in", ()
   );
 });
 
+test("extractImages() can continue numbering across states", () => {
+  const first = extractImages({ photo: image(PNG) });
+  const second = extractImages({ photo: image(JPEG) }, { from: first.images.length + 1 });
+  assert.deepEqual(first.state, { photo: "[image 1]" });
+  assert.deepEqual(second.state, { photo: "[image 2]" });
+  assert.equal(second.images.length, 1);
+});
+
 test("extractImages() leaves a state without images as it was", () => {
   const state: Json = { a: [1, "two", null, true], b: { c: "data:text/plain;base64,AAAA" } };
   const result = extractImages(state);

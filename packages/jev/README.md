@@ -19,6 +19,26 @@ await ask.if("cat", "is animal", () => {
 
 Full documentation, the `ask.if`/`ask.switch`/`ask.score` guide, and runnable examples live in the [main repo README](https://github.com/asakaxgit/askif#readme).
 
+## Different states, one request
+
+`systemOne` takes one `state` per request. Cross-state packing is off unless you opt in:
+
+```ts
+import { createAsk } from "askif";
+import { jev } from "@askif/jev";
+
+const ask = createAsk({ backend: jev({ multiState: true }) });
+
+await Promise.all([
+  ask.score(tweetA, "How spicy?").level("mild").level("hot"),
+  ask.if(tweetB, "is a reply", () => {}),
+]);
+```
+
+Those calls then share one request, up to `maxStatesPerBatch` on the `ask` instance (default 16) and this backend's own cap of 32 states. The state on the wire is `{ items: { i0: tweetA, i1: tweetB } }`, and each question is pointed at its item. A tick that only mentions one state is sent exactly as before. There is no live test of this packing.
+
+Leave `multiState` unset, or set `ask.configure({ maxStatesPerBatch: 1 })`, to keep one request per state.
+
 ## Other Jev-compatible servers
 
 `@askif/jev` speaks TypeSafe's Jev wire API, so it also works with [OpenJev](https://github.com/razorback16/openjev), an open Jev-compatible server (DiffusionGemma via vLLM or MLX; hosted on [Codiv](https://codiv.ai)). Only `baseURL` and `model` change:
