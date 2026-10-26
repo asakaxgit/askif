@@ -27,7 +27,7 @@ import { image } from "askif";
 await ask.if({ photo: image(bytes) }, "shows a cat");
 ```
 
-Every question carries its images, so N questions about an image send it N times. Not yet verified against the live API (the account used for testing was rate-limited); the request shape follows the SDK's types and is covered by offline tests.
+Every question carries its images, so N questions about an image send it N times. The request shape follows the SDK's types and is covered by offline tests. `live/openai.test.ts` sends one small fixture image when `OPENAI_API_KEY` is set; that run is not part of `pnpm run check`, and a passing live result is not recorded in this repo yet.
 
 ## How it works
 

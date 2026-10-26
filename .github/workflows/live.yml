@@ -1,0 +1,144 @@
+# Real-provider tests. Separate from ci.yml's `check` job, which stays offline.
+#
+# pull_request is intentionally absent. A pull_request run from a fork would
+# otherwise be the path that can see repository secrets. Same-repo pull
+# requests are not a trigger either; dispatch this workflow to try a branch
+# after it is on the default branch's workflow list.
+name: Live
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # 15:17 UTC, which is 00:17 in Japan. Off the hour so it misses the cron herd.
+    - cron: "17 15 * * *"
+  workflow_dispatch:
+    inputs:
+      backend:
+        description: Backend to run
+        type: choice
+        default: all
+        options:
+          - all
+          - jev
+          - clef
+          - openai
+          - openrouter
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-backends
+  cancel-in-progress: false
+
+jobs:
+  jev:
+    name: live @askif/jev
+    if: github.event_name != 'workflow_dispatch' || github.event.inputs.backend == 'all' || github.event.inputs.backend == 'jev'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - id: secrets
+        env:
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+        run: bash .github/scripts/require-live-secrets.sh TYPESAFE_API_KEY
+      - uses: pnpm/action-setup@v4
+        if: steps.secrets.outputs.present == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.secrets.outputs.present == 'true'
+        with:
+          node-version: 22
+          cache: pnpm
+      - if: steps.secrets.outputs.present == 'true'
+        run: pnpm install --frozen-lockfile
+      - name: Live tests
+        if: steps.secrets.outputs.present == 'true'
+        env:
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+          LIVE_REQUIRE: "1"
+        run: pnpm run test:live:jev
+
+  clef:
+    name: live @askif/clef
+    if: github.event_name != 'workflow_dispatch' || github.event.inputs.backend == 'all' || github.event.inputs.backend == 'clef'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - id: secrets
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: bash .github/scripts/require-live-secrets.sh CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN
+      - uses: pnpm/action-setup@v4
+        if: steps.secrets.outputs.present == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.secrets.outputs.present == 'true'
+        with:
+          node-version: 22
+          cache: pnpm
+      - if: steps.secrets.outputs.present == 'true'
+        run: pnpm install --frozen-lockfile
+      - name: Live tests
+        if: steps.secrets.outputs.present == 'true'
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          LIVE_REQUIRE: "1"
+        run: pnpm run test:live:clef
+
+  openai:
+    name: live @askif/openai
+    if: github.event_name != 'workflow_dispatch' || github.event.inputs.backend == 'all' || github.event.inputs.backend == 'openai'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - id: secrets
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: bash .github/scripts/require-live-secrets.sh OPENAI_API_KEY
+      - uses: pnpm/action-setup@v4
+        if: steps.secrets.outputs.present == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.secrets.outputs.present == 'true'
+        with:
+          node-version: 22
+          cache: pnpm
+      - if: steps.secrets.outputs.present == 'true'
+        run: pnpm install --frozen-lockfile
+      - name: Live tests
+        if: steps.secrets.outputs.present == 'true'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          LIVE_REQUIRE: "1"
+        run: pnpm run test:live:openai
+
+  openrouter:
+    name: live OpenRouter (Jev)
+    if: github.event_name != 'workflow_dispatch' || github.event.inputs.backend == 'all' || github.event.inputs.backend == 'openrouter'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - id: secrets
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: bash .github/scripts/require-live-secrets.sh OPENROUTER_API_KEY
+      - uses: pnpm/action-setup@v4
+        if: steps.secrets.outputs.present == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.secrets.outputs.present == 'true'
+        with:
+          node-version: 22
+          cache: pnpm
+      - if: steps.secrets.outputs.present == 'true'
+        run: pnpm install --frozen-lockfile
+      - name: Live tests
+        if: steps.secrets.outputs.present == 'true'
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          LIVE_REQUIRE: "1"
+        run: pnpm run test:live:openrouter
