@@ -10,7 +10,7 @@ const BUMPS = ["patch", "minor", "major"] as const;
 type Bump = (typeof BUMPS)[number];
 const isBump = (value: string): value is Bump => BUMPS.some((bump) => bump === value);
 
-const PACKAGES = ["askif", "@askif/jev", "@askif/openai", "@askif/clef", "@askif/vercel"] as const;
+const PACKAGES = ["askif", "@askif/jev", "@askif/openai", "@askif/clef", "@askif/vercel", "@askif/vertex"] as const;
 type PackageName = (typeof PACKAGES)[number];
 
 const [packagesArg, bumpArg, ...summaryParts] = process.argv.slice(2);

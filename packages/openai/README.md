@@ -53,7 +53,9 @@ Every question carries its images, so N questions about an image send it N times
 `baseURL` (from `ClientOptions`, passed straight through) switches to any OpenAI-compatible API
 that takes a plain bearer API key — including [OpenRouter](https://openrouter.ai) and Google
 Cloud's [Vertex AI](https://cloud.google.com/vertex-ai) (whose `apiKey` needs to be a short-lived
-Google Cloud access token, not a static key):
+Google Cloud access token, not a static key). For a token read from Application Default
+Credentials on every request, and for falling back here when Jev is missing or a Jev call
+fails, use [`@askif/vertex`](../vertex) instead of pasting a token into `apiKey`:
 
 ```ts
 import { openai } from "@askif/openai";

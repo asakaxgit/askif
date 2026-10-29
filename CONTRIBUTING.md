@@ -1,6 +1,6 @@
 # Contributing
 
-This is a [pnpm](https://pnpm.io) workspace. Packages: [`packages/askif`](./packages/askif), [`packages/jev`](./packages/jev), [`packages/openai`](./packages/openai), [`packages/clef`](./packages/clef), [`packages/vercel`](./packages/vercel).
+This is a [pnpm](https://pnpm.io) workspace. Packages: [`packages/askif`](./packages/askif), [`packages/jev`](./packages/jev), [`packages/openai`](./packages/openai), [`packages/clef`](./packages/clef), [`packages/vercel`](./packages/vercel), [`packages/vertex`](./packages/vertex).
 
 ```sh
 pnpm install

@@ -1,0 +1,57 @@
+{
+  "name": "@askif/vertex",
+  "version": "0.1.0",
+  "description": "Jev for askif, falling back to Gemini on Vertex AI when Jev cannot be used.",
+  "keywords": [
+    "askif",
+    "jev",
+    "vertex",
+    "gemini",
+    "ai"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/asakaxgit/askif.git",
+    "directory": "packages/vertex"
+  },
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/esm/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.esm.json && tsc -p tsconfig.cjs.json && echo '{\"type\":\"commonjs\"}' > dist/cjs/package.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --import tsx --test --test-concurrency=1 test/*.test.ts",
+    "example": "tsx examples/backends.ts"
+  },
+  "dependencies": {
+    "@askif/jev": "^0.1.2",
+    "@askif/openai": "^0.1.1",
+    "askif": "^0.2.0",
+    "google-auth-library": "^10.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3"
+  }
+}
