@@ -1,6 +1,6 @@
 {
   "name": "@askif/vertex",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Jev for askif, falling back to Gemini on Vertex AI when Jev cannot be used.",
   "keywords": [
     "askif",
@@ -44,9 +44,9 @@
     "example": "tsx examples/backends.ts"
   },
   "dependencies": {
-    "@askif/jev": "^0.1.2",
-    "@askif/openai": "^0.1.1",
-    "askif": "^0.2.0",
+    "@askif/jev": "^0.2.0",
+    "@askif/openai": "^0.2.0",
+    "askif": "^0.3.0",
     "google-auth-library": "^10.5.0"
   },
   "devDependencies": {
