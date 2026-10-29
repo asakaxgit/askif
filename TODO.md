@@ -19,7 +19,7 @@ Ideas not yet done, roughly in priority order.
 | --- | --- |
 | OpenAI | `OPENAI_API_KEY` (done) |
 | Azure OpenAI | a resource with a deployment: endpoint, key, deployment name, a supported `apiVersion` |
-| Vertex AI | a GCP project with Vertex enabled, `gcloud auth print-access-token`, project id |
+| Vertex AI | `@askif/vertex` covers ADC and the Jev fallback offline. A live call still needs a GCP project with Vertex enabled |
 | Bedrock | a Bedrock API key (`AWS_BEARER_TOKEN_BEDROCK`), a region with `openai.gpt-oss-*` enabled |
 | OpenRouter / Gemini | `OPENROUTER_API_KEY` / `GEMINI_API_KEY` |
 | Ollama / vLLM / LM Studio / llama.cpp | the server running locally with a model loaded |

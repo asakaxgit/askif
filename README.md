@@ -197,7 +197,7 @@ A question is sent on the next microtask, once the chain is complete. Every `.ca
 
 Calls made in the same tick go out in as few requests as the backend allows.
 
-Questions about the **same state** always share a request, up to `maxBatchSize` (default 32). Jev answers them together, so extra questions barely add time. The conditions of an `.elseif()` chain are included. (`@askif/openai` has no native batching, so it sends one request per question instead — still in parallel, but not one HTTP call.)
+Questions about the **same state** always share a request, up to `maxBatchSize` (default 32). Jev answers them together, so extra questions barely add time. The conditions of an `.elseif()` chain are included. (`@askif/openai` has no native batching, so it sends one request per question instead — still in parallel, but not one HTTP call.) A Jev call that falls back to Vertex is split the same way: one Vertex request per question.
 
 ```ts
 // packages/askif/examples/batching.ts#L24-L32
@@ -257,6 +257,7 @@ The model sees each image where you put it, and your question can refer to it as
 | `@askif/openai` | PNG, JPEG, WebP, GIF (non-animated) |
 | `@askif/jev` | opt-in, up to 64: PNG and JPEG (`jev({ images: true })`; see the [jev README](packages/jev/README.md#images)) |
 | `@askif/vercel` | HTTP: none. `vercelDecide({ images: true })`: PNG, JPEG, WebP, GIF, up to 16 (askif's cap). The default model is text and JSON only. See the [vercel README](packages/vercel/README.md#images) |
+| `@askif/vertex` | Vertex uses the OpenAI row. A call that stays on Jev uses the Jev row. `getAsk()` leaves Jev images off |
 
 Tried so far on simple subjects: animals, everyday objects, shapes, a stop sign, a photograph of an old bicycle, Earth from the Moon. Subtler judgments, such as whether a photographed parcel is damaged, have not been tested here, so try your own photos (`@askif/clef` has `examples/try-image.ts` for that) before relying on one.
 
@@ -311,7 +312,63 @@ const viaOpenRouter = createAsk({
 
 For measured tokens and latency across the backends, see [`bench/`](./bench).
 
-See the `Backend` type (from `askif`) to connect another model entirely — `@askif/jev` is just one implementation of it. [`@askif/openai`](./packages/openai) is another, for OpenAI and OpenAI-compatible APIs, [`@askif/clef`](./packages/clef) is a third, for Cloudflare Workers AI's Clef (same System One format as Jev, so questions are batched into one request), and [`@askif/vercel`](./packages/vercel) is a fourth, for Vercel AI Gateway's Decision API (`POST /v1/evaluate`, or AI SDK `experimental_decide` via `vercelDecide()`).
+See the `Backend` type (from `askif`) to connect another model entirely — `@askif/jev` is just one implementation of it. [`@askif/openai`](./packages/openai) is another, for OpenAI and OpenAI-compatible APIs, [`@askif/clef`](./packages/clef) is a third, for Cloudflare Workers AI's Clef (same System One format as Jev, so questions are batched into one request), [`@askif/vercel`](./packages/vercel) is a fourth, for Vercel AI Gateway's Decision API (`POST /v1/evaluate`, or AI SDK `experimental_decide` via `vercelDecide()`), and [`@askif/vertex`](./packages/vertex) keeps Jev and falls back to Gemini on Vertex AI.
+
+### Jev, with Vertex as a fallback
+
+`@askif/vertex` is the preset. Unset `ASK_BACKEND` uses Jev when `TYPESAFE_API_KEY` is set. Without that key, judgments use Vertex and warn once per process. A Jev call that fails in transit (connection, timeout, 5xx, 401/403) is sent to Vertex for that call only; the next call tries Jev again. Explicit `vertex`, `openai`, and `mock` do not fall back.
+
+429 does not. It surfaces as `BACKEND_FAILED` whose `cause` is the rate-limit error, so a throttle does not also spend Vertex quota. A malformed question, a state the backend rejects, a bad answer, and a caller abort do not fall back either.
+
+Jev can take many questions about one state in one request. Vertex takes one question per request. The fallback splits that batch. `fallback()` from `askif` is the wrapper, if the preset's env switch is not what you want.
+
+```ts
+import { createAsk, fallback, mock } from "askif";
+```
+
+```ts
+// packages/vertex/examples/backends.ts#L10-L33
+
+const yes = (question: Question): Answer => {
+  if (question.kind !== "yesno") throw new Error("expected a yes/no question");
+  return { kind: "yesno", probability: 0.91 };
+};
+
+const down = Object.assign(new Error("connect ECONNRESET"), { code: "ECONNRESET" });
+const limited = Object.assign(new Error("slow down"), { name: "RateLimitError", status: 429 });
+
+const vertex = mock(yes);
+const notices: unknown[] = [];
+const ask = createAsk({
+  backend: fallback(
+    mock(() => {
+      throw down;
+    }),
+    vertex,
+    { onFallback: (error) => notices.push(error) },
+  ),
+});
+
+assert.equal(await ask.is("cat", "is animal"), true);
+assert.equal(notices.length, 1);
+assert.equal(vertex.calls.length, 1);
+console.log("fell back after", down.message);
+```
+
+```ts
+// packages/vertex/examples/backends.ts#L58-L65
+
+assert.deepEqual(selectAskBackend({ TYPESAFE_API_KEY: "present" }), { backend: "jev", fellBackToVertex: false });
+assert.deepEqual(selectAskBackend({}), { backend: "vertex", fellBackToVertex: true });
+assert.deepEqual(selectAskBackend({ ASK_BACKEND: "vertex", TYPESAFE_API_KEY: "present" }), {
+  backend: "vertex",
+  fellBackToVertex: false,
+});
+assert.deepEqual(selectAskBackend({ ASK_BACKEND: "openai" }), { backend: "openai", fellBackToVertex: false });
+assert.deepEqual(selectAskBackend({ ASK_BACKEND: "mock" }), { backend: "mock", fellBackToVertex: false });
+```
+
+The second snippet imports `selectAskBackend` from `@askif/vertex`. Full env table, ADC, and the request defaults (`google/gemini-3.5-flash`, `reasoning_effort: "low"`, `max_tokens: 4096`) are in the [vertex README](./packages/vertex/README.md).
 
 For tests, `mock` (from `askif`, no `@askif/jev` needed) answers questions locally and records every call:
 
@@ -422,7 +479,7 @@ import { ask as decide } from "@askif/jev";
 
 ## Contributing
 
-This is a [pnpm](https://pnpm.io) workspace with five packages: [`packages/askif`](./packages/askif) (the toolkit), [`packages/jev`](./packages/jev) (the Jev bundle), [`packages/openai`](./packages/openai) (the OpenAI bundle), [`packages/clef`](./packages/clef) (the Cloudflare Clef bundle), and [`packages/vercel`](./packages/vercel) (the Vercel AI Gateway Decision API bundle). The backend packages depend on `askif`.
+This is a [pnpm](https://pnpm.io) workspace with six packages: [`packages/askif`](./packages/askif) (the toolkit), [`packages/jev`](./packages/jev) (the Jev bundle), [`packages/openai`](./packages/openai) (the OpenAI bundle), [`packages/clef`](./packages/clef) (the Cloudflare Clef bundle), [`packages/vercel`](./packages/vercel) (the Vercel AI Gateway Decision API bundle), and [`packages/vertex`](./packages/vertex) (Jev, falling back to Vertex AI). The backend packages depend on `askif`. `@askif/vertex` also depends on `@askif/jev` and `@askif/openai`.
 
 ```sh
 pnpm install

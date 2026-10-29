@@ -1,5 +1,7 @@
 export { confidenceOf, createAsk } from "./core.js";
 export { ASK_ERROR_CODES, isAskError, makeAskError } from "./errors.js";
+export { fallback, shouldFallback } from "./fallback.js";
+export type { FallbackOptions } from "./fallback.js";
 export type { AskError, AskErrorCode } from "./errors.js";
 export {
   DEFAULT_PROTECTION,
