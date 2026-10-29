@@ -9,7 +9,7 @@ All of these run against the built-in [`mock`](../../../README.md#backends) back
 | [`score.ts`](./score.ts) | `ask.score`: levels, `.unsure`, `score`/`normalized`, structured descriptions |
 | [`batching.ts`](./batching.ts) | Same-tick calls sharing a request: one state by default, or several when the backend opts in |
 | [`configuration.ts`](./configuration.ts) | `ask.configure`, per-call overrides, and a separate stricter instance |
-| [`backends.ts`](./backends.ts) | Building a custom backend with `mock`. `fallback()` lives in `@askif/vertex`'s examples |
+| [`backends.ts`](./backends.ts) | Building a custom backend with `mock` |
 | [`errors.ts`](./errors.ts) | Catching an `AskError` and checking its `code` |
 | [`security.ts`](./security.ts) | Default prompt-injection protection: `.unsure()` holds a steered state, and the flag is set either way |
 
