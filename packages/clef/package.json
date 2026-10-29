@@ -1,6 +1,6 @@
 {
   "name": "@askif/clef",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "The Cloudflare Workers AI Clef backend for askif, with a ready-to-use `ask`.",
   "keywords": [
     "askif",
@@ -47,7 +47,7 @@
     "example:bench": "tsx examples/bench.ts"
   },
   "dependencies": {
-    "askif": "^0.2.0"
+    "askif": "^0.3.0"
   },
   "devDependencies": {
     "@types/node": "^26.6.3",
