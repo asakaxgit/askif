@@ -622,3 +622,142 @@ test("a refusal is clipped before it is echoed", async () => {
     },
   );
 });
+
+/** A client whose fake `fetch` answers every request with the next reply in turn, and records every body. */
+const scriptedClient = (replies: readonly string[], bodies: Json[]) => {
+  let next = 0;
+  return new OpenAI({
+    apiKey: "test",
+    maxRetries: 0,
+    fetch: async (_url, init) => {
+      bodies.push(JSON.parse(String(init?.body)));
+      const reply = replies[next++];
+      if (reply === undefined) throw new Error("test double ran out of replies");
+      return completionResponse(reply);
+    },
+  });
+};
+
+const YESNO_SCHEMA = {
+  type: "object",
+  properties: { probability: { type: "number", description: "Probability from 0 to 1 that the answer is yes." } },
+  required: ["probability"],
+  additionalProperties: false,
+};
+
+const schemaLines = (schema: Json): string =>
+  `\n\nReply with only a JSON object, and no other text, that matches this JSON Schema:\n${JSON.stringify(schema)}`;
+
+test('structuredOutput: "json_schema" sends the default body, byte for byte', async () => {
+  const raws: string[] = [];
+  const client = rawClient(raws);
+  await createAsk({ backend: openai({ client }), protection: false }).is(7, "is odd");
+  await createAsk({ backend: openai({ client, structuredOutput: "json_schema" }), protection: false }).is(7, "is odd");
+  assert.equal(raws[0], yesNoWire("7"));
+  assert.equal(raws[1], yesNoWire("7"));
+});
+
+test('structuredOutput: "prompt" sends no response_format and writes the schema into the prompt', async () => {
+  const bodies: Json[] = [];
+  const client = scriptedClient([JSON.stringify({ probability: 0.9 })], bodies);
+  const ask = createAsk({ backend: openai({ client, structuredOutput: "prompt" }), protection: false });
+
+  assert.equal(await ask.is(7, "is odd"), true);
+
+  const body = bodies[0];
+  assert.ok(isRecord(body));
+  assert.equal("response_format" in body, false);
+  assert.equal(body["reasoning_effort"], "none");
+  assert.deepEqual(body["messages"], [
+    { role: "system", content: SYSTEM },
+    {
+      role: "user",
+      content:
+        '<state>\n7\n</state>\n\nYes/no question:\n{"condition":"is odd","question":"Is `condition` true of the state?"}\n\nGive the probability that the answer is yes.' +
+        schemaLines(YESNO_SCHEMA),
+    },
+  ]);
+});
+
+test('structuredOutput: "json_object" sends JSON mode and writes the schema into the prompt', async () => {
+  const bodies: Json[] = [];
+  const client = scriptedClient([JSON.stringify({ probability: 0.1 })], bodies);
+  const ask = createAsk({ backend: openai({ client, structuredOutput: "json_object" }) });
+
+  assert.equal(await ask.is("cat", "is a hammer"), false);
+
+  const body = bodies[0];
+  assert.ok(isRecord(body));
+  assert.deepEqual(body["response_format"], { type: "json_object" });
+  assert.equal(userText(JSON.stringify(body)).endsWith(schemaLines(YESNO_SCHEMA)), true);
+});
+
+test('structuredOutput: "prompt" spells out the choice and scale keys', async () => {
+  const bodies: Json[] = [];
+  const client = scriptedClient(
+    [JSON.stringify({ returns: 0.7, billing: 0.3 }), JSON.stringify({ "0": 0.1, "1": 0.2, "2": 0.7 })],
+    bodies,
+  );
+  const ask = createAsk({ backend: openai({ client, structuredOutput: "prompt" }) });
+
+  const team = await ask.switch("refund please", "Which team?").case("returns").case("billing");
+  const severity = await ask.score("refund please", "How severe?").level("a").level("b").level("c");
+  assert.equal(team.choice, "returns");
+  assert.equal(severity.level, "c");
+
+  const [choiceText, scaleText] = bodies.map((body) => userText(JSON.stringify(body)));
+  assert.ok(choiceText !== undefined && scaleText !== undefined);
+  assert.equal(choiceText.includes('"required":["returns","billing"]'), true);
+  assert.equal(scaleText.includes('"required":["0","1","2"]'), true);
+});
+
+const looseReplies: ReadonlyArray<{ readonly name: string; readonly content: string }> = [
+  { name: "a json code fence", content: '```json\n{"probability": 0.8}\n```' },
+  { name: "a sentence around the object", content: 'Here is my answer: {"probability": 0.8} Hope that helps.' },
+  { name: "a think block with braces", content: '<think>maybe {"probability": 0.1}?</think>\n{"probability": 0.8}' },
+];
+
+for (const { name, content } of looseReplies) {
+  test(`structuredOutput: "prompt" parses ${name}`, async () => {
+    const client = scriptedClient([content], []);
+    const answers = await openai({ client, structuredOutput: "prompt" }).decide("cat", {
+      q: { kind: "yesno", instructions: "is an animal" },
+    });
+    assert.deepEqual(answers, { q: { kind: "yesno", probability: 0.8 } });
+  });
+}
+
+test('the default json_schema mode still rejects a fenced reply, and "prompt" rejects one with no object', async () => {
+  const question = { q: { kind: "yesno", instructions: "is an animal" } } as const;
+  await assert.rejects(
+    () => openai({ client: scriptedClient(['```json\n{"probability": 0.8}\n```'], []) }).decide("cat", question),
+    (error) => isAskError(error) && error.code === "BAD_RESPONSE",
+  );
+  await assert.rejects(
+    () => openai({ client: scriptedClient(["Probably yes."], []), structuredOutput: "prompt" }).decide("cat", question),
+    (error) => isAskError(error) && error.code === "BAD_RESPONSE" && /not valid JSON/.test(error.message),
+  );
+  await assert.rejects(
+    () =>
+      openai({ client: scriptedClient(['{"probability": 1.5}'], []), structuredOutput: "prompt" }).decide("cat", question),
+    (error) => isAskError(error) && error.code === "BAD_RESPONSE" && /outside \[0, 1\]/.test(error.message),
+  );
+});
+
+test('structuredOutput: "prompt" puts the schema in the text part before the images', async () => {
+  const bodies: Json[] = [];
+  const client = scriptedClient([JSON.stringify({ probability: 0.6 })], bodies);
+  const ask = createAsk({ backend: openai({ client, structuredOutput: "prompt" }) });
+
+  await ask.is({ photo: image(Uint8Array.of(0x89, 0x50, 0x4e, 0x47), "image/png") }, "shows a cat");
+
+  const body = bodies[0];
+  assert.ok(isRecord(body) && Array.isArray(body["messages"]));
+  const user = body["messages"][1];
+  assert.ok(isRecord(user) && Array.isArray(user["content"]));
+  const [textPart, imagePart] = user["content"];
+  assert.ok(isRecord(textPart) && typeof textPart["text"] === "string");
+  assert.equal(textPart["text"].includes(schemaLines(YESNO_SCHEMA)), true);
+  assert.ok(isRecord(imagePart));
+  assert.equal(imagePart["type"], "image_url");
+});
