@@ -1,6 +1,6 @@
 # @askif/openai
 
-The [askif](https://www.npmjs.com/package/askif) backend for OpenAI, with a ready-to-use `ask`. Also works with OpenRouter, Google Cloud's Vertex AI, Azure OpenAI, Amazon Bedrock, and self-hosted OpenAI-compatible servers — see [Other endpoints](#other-endpoints).
+The [askif](https://www.npmjs.com/package/askif) backend for OpenAI, with a ready-to-use `ask`. Also works with OpenRouter, Google Cloud's Vertex AI, Azure OpenAI, Amazon Bedrock, hosted providers such as Groq and Mistral, gateways such as LiteLLM, and self-hosted OpenAI-compatible servers — see [Other endpoints](#other-endpoints).
 
 ```sh
 npm install askif @askif/openai
@@ -118,6 +118,97 @@ const viaGemini = openai({
 });
 ```
 
+### Hosted providers
+
+These take a plain API key as the bearer token, so each one is a `baseURL` and that provider's
+own `model` id:
+
+```ts
+import { openai } from "@askif/openai";
+
+const viaGroq = openai({
+  apiKey: process.env.GROQ_API_KEY,
+  baseURL: "https://api.groq.com/openai/v1",
+  model: "openai/gpt-oss-120b",
+});
+```
+
+| Provider | `baseURL` | What its docs say about `response_format` | `structuredOutput` |
+| --- | --- | --- | --- |
+| [Groq](https://console.groq.com/docs/structured-outputs) | `https://api.groq.com/openai/v1` | `json_schema` with `strict: true` on a few listed models (gpt-oss among them). Other models get best-effort `json_schema` or `json_object` | Default on the strict models, `"json_object"` on the rest |
+| [Together AI](https://docs.together.ai/docs/json-mode) | `https://api.together.ai/v1` | `json_schema` on supported models | Default |
+| [Fireworks AI](https://docs.fireworks.ai/structured-responses/structured-response-formatting) | `https://api.fireworks.ai/inference/v1` | `json_schema` and `json_object` | Default |
+| [DeepInfra](https://docs.deepinfra.com/chat/structured-outputs) | `https://api.deepinfra.com/v1/openai` | `json_schema` and `json_object`, on many models | Default |
+| [Mistral](https://docs.mistral.ai/inference/conversations/structured-output/custom) | `https://api.mistral.ai/v1` | `json_schema` with `strict` | Default |
+| [xAI](https://docs.x.ai/docs/guides/structured-outputs) | `https://api.x.ai/v1` | `json_schema` | Default |
+| [DeepSeek](https://api-docs.deepseek.com/guides/json_mode) | `https://api.deepseek.com` | `json_object` only. The prompt must contain the word "json", and the reply can come back empty | `"json_object"` |
+| [Cerebras](https://inference-docs.cerebras.ai/capabilities/structured-outputs) | `https://api.cerebras.ai/v1` | `json_schema` with `strict: true`, which needs `additionalProperties: false` on every object, and `json_object` | Default |
+
+The last column is what each provider's docs suggest. None of these has been tested live against
+this package. `"json_object"` writes the schema into the user message, which includes the word
+"JSON", so DeepSeek's requirement is met. DeepSeek's empty reply surfaces as `BAD_RESPONSE`. The
+schemas this backend sends already set `additionalProperties: false` on every object (the same
+subset Bedrock needs, below).
+
+```ts
+import { openai } from "@askif/openai";
+
+const viaDeepSeek = openai({
+  apiKey: process.env.DEEPSEEK_API_KEY,
+  baseURL: "https://api.deepseek.com",
+  model: "deepseek-flash",
+  structuredOutput: "json_object",
+});
+```
+
+### Gateways
+
+A gateway in front of several providers is also a `baseURL`. The model id is the gateway's, and
+whether `response_format: json_schema` works depends on the provider behind it.
+
+[LiteLLM](https://docs.litellm.ai/docs/proxy/user_keys) proxy listens on port 4000 by default. The
+`apiKey` is a LiteLLM virtual key, and `model` is a model name from the proxy's config. LiteLLM
+passes `json_schema` through to providers that support it; see its [JSON mode
+docs](https://docs.litellm.ai/docs/completion/json_mode) for which ones do.
+
+```ts
+import { openai } from "@askif/openai";
+
+const viaLiteLLM = openai({
+  apiKey: process.env.LITELLM_API_KEY,
+  baseURL: "http://localhost:4000/v1",
+  model: "gpt-6-luna", // a model_name from the proxy's config
+});
+```
+
+[Cloudflare AI Gateway](https://developers.cloudflare.com/ai-gateway/usage/chat-completion/)'s
+unified endpoint is `/compat` under your account and gateway, and `model` is
+`{provider}/{model}`. With provider keys stored in Cloudflare (BYOK), `apiKey` is a Cloudflare API
+token. On an authenticated gateway that holds no provider key, `apiKey` is the provider's key, and
+the Cloudflare token goes in a `cf-aig-authorization` header (`defaultHeaders` comes from
+`ClientOptions` too):
+
+```ts
+import { openai } from "@askif/openai";
+
+const viaCloudflare = openai({
+  apiKey: process.env.OPENAI_API_KEY,
+  defaultHeaders: { "cf-aig-authorization": `Bearer ${process.env.CF_AIG_TOKEN}` },
+  baseURL: `https://gateway.ai.cloudflare.com/v1/${process.env.CF_ACCOUNT_ID}/default/compat`,
+  model: "openai/gpt-6-luna",
+});
+```
+
+This is AI Gateway's OpenAI-compatible chat endpoint, which is not the same thing as Cloudflare
+Workers AI's Clef. Clef uses the System One format and batches questions into one request; use
+[`@askif/clef`](../clef) for it.
+
+Vercel AI Gateway also has an OpenAI-compatible endpoint, but its Decision API is the better fit
+for askif. It takes askif's questions as they are, sends the questions about one state in a single
+request, and reports cost. Use
+[`@askif/vercel`](../vercel) for it: `vercel()` posts to `POST /v1/evaluate`, and `vercelDecide()`
+calls AI SDK `experimental_decide`.
+
 ### Local servers
 
 Self-hosted servers expose the same protocol on localhost, so again it's a `baseURL`. The SDK
@@ -226,6 +317,8 @@ are skipped unless their credentials are set, and they are not part of `pnpm run
 | Azure OpenAI | Unverified | Documentation only. `examples/backends.ts` builds the client but sends no request |
 | Vertex AI | Unverified | Offline tests in [`@askif/vertex`](../vertex) only |
 | OpenRouter, Gemini | Unverified | Documentation only |
+| Groq, Together AI, Fireworks AI, DeepInfra, Mistral, xAI, DeepSeek, Cerebras | Unverified | Documentation only (see [Hosted providers](#hosted-providers)). `examples/backends.ts` builds them but sends no request |
+| LiteLLM, Cloudflare AI Gateway | Unverified | Documentation only (see [Gateways](#gateways)) |
 | `structuredOutput: "prompt"` and `"json_object"` | Unverified | Offline tests cover the request body and lenient parsing. `live/openai.test.ts` runs both modes on OpenAI, and `"prompt"` on a local server when `OLLAMA_BASE_URL` and `OLLAMA_MODEL` are set. No passing run recorded yet |
 | Ollama, vLLM, LM Studio, llama.cpp | Unverified | Documentation only (see the table above) |
 

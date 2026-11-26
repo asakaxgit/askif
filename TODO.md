@@ -44,8 +44,12 @@ Ideas not yet done, roughly in priority order.
 
 ## More OpenAI-compatible endpoints (docs + example only, just a `baseURL`)
 
-- [ ] Hosted: Groq, Together, Fireworks, DeepInfra, Mistral, xAI, DeepSeek, Cerebras.
-- [ ] Gateways: LiteLLM, Cloudflare AI Gateway. Vercel AI Gateway's Decision API is `@askif/vercel` (`POST /v1/evaluate` and optional AI SDK `experimental_decide`). Not called from this repo yet: the live gateway, image input, and the TypeSafe-compatible base URL on `@askif/jev`.
+- [x] Hosted: Groq, Together, Fireworks, DeepInfra, Mistral, xAI, DeepSeek, Cerebras. `baseURL`,
+      `response_format` support, and a suggested `structuredOutput` per provider are in
+      `packages/openai/README.md` (Hosted providers), from each provider's docs (checked
+      2026-11-27). None is live-tested.
+- [x] Gateways: LiteLLM, Cloudflare AI Gateway (`/compat`, `cf-aig-authorization`). Documented in
+      the same README (Gateways), not live-tested. Vercel AI Gateway's Decision API is `@askif/vercel` (`POST /v1/evaluate` and optional AI SDK `experimental_decide`). Not called from this repo yet: the live gateway, image input, and the TypeSafe-compatible base URL on `@askif/jev`.
 
 ## New backends
 
