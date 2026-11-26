@@ -121,6 +121,8 @@ const groupsOf = (items: readonly DecisionItem[]): readonly StateGroup[] => {
 /**
  * Run `primary`, and on a transport failure run `secondary` instead.
  *
+ * `imageSources` lists only kinds both backends read, so the secondary never gets an image it can't fetch.
+ *
  * Limits and `multiState` are the primary's, so same-tick batching still fills one
  * Jev call. The fallback then splits that call into what `secondary` accepts:
  * one question at a time when `maxQuestionsPerCall` is 1, and one state at a time
@@ -131,6 +133,7 @@ const groupsOf = (items: readonly DecisionItem[]): readonly StateGroup[] => {
  */
 export const fallback = (primary: Backend, secondary: Backend, options: FallbackOptions = {}): Backend => {
   const when = options.when ?? shouldFallback;
+  const imageSources = (primary.imageSources ?? []).filter((kind) => secondary.imageSources?.includes(kind) === true);
 
   const notify = (error: unknown): void => {
     if (options.onFallback === undefined) return;
@@ -212,6 +215,7 @@ export const fallback = (primary: Backend, secondary: Backend, options: Fallback
   return {
     name: primary.name,
     ...(primary.limits === undefined ? {} : { limits: primary.limits }),
+    ...(imageSources.length === 0 ? {} : { imageSources }),
     ...(primary.multiState === true && primary.decideMany !== undefined
       ? { multiState: true as const, decideMany }
       : {}),

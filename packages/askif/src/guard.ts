@@ -176,7 +176,10 @@ const walkState = (value: Json, p: ProtectionConfig, budget: UntrustedBudget): J
   }
   if (typeof value !== "object" || value === null) return value;
   if (Array.isArray(value)) return value.map((entry) => walkState(entry, p, budget));
-  if (isImage(value)) {
+  if (isImage(value) && value.source.kind !== "base64") {
+    // imageUrl() / bucketImage() checked these fields. A look-alike is cleaned as text below, never fetched.
+    if (isTrustedImage(value)) return value;
+  } else if (isImage(value) && value.source.kind === "base64") {
     const data = value.source.data;
     const valid = isStandardImagePayload(value.source.mediaType, data);
     if (isTrustedImage(value)) return valid ? value : refusedImage(data.length);

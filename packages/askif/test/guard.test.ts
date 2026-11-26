@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  base64Source,
   DEFAULT_PROTECTION,
   HIDDEN_CHARS,
   UNTRUSTED_IMAGE_CHARS,
@@ -171,10 +172,11 @@ test("image() over the string cap is sent intact; look-alikes become a marker", 
     await ask.if({ photo }, "a cat").else(() => {});
     const sent = isRecord(seen) ? seen["photo"] : undefined;
     assert.equal(isImage(sent), true);
-    if (isImage(sent)) assert.equal(sent.source.data, photo.source.data);
+    if (isImage(sent)) assert.equal(base64Source(sent, "mock").data, photo.source.data);
     const lifted = extractImages(seen ?? null, images === "explicit" ? { only: "image" } : {});
     assert.equal(lifted.images.length, 1);
-    assert.equal(lifted.images[0]?.source.data, photo.source.data);
+    const first = lifted.images[0];
+    assert.equal(first === undefined ? undefined : base64Source(first, "mock").data, photo.source.data);
   }
 
   const content = { content_type: "image/png", base64: "AAAA" };
@@ -220,7 +222,7 @@ test("image() over the string cap is sent intact; look-alikes become a marker", 
     await ask.if({ photo: overCap }, "a cat").else(() => {});
     const sent = isRecord(seen) ? seen["photo"] : undefined;
     assert.equal(isImage(sent), true);
-    if (isImage(sent)) assert.equal(sent.source.data, overCap.source.data);
+    if (isImage(sent)) assert.equal(base64Source(sent, "mock").data, overCap.source.data);
   }
 });
 

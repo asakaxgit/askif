@@ -18,7 +18,7 @@ export {
   sanitizeText,
   stripHidden,
 } from "./guard.js";
-export { DATA_URL, extractImages, image, isContentImage, isImage } from "./image.js";
+export { DATA_URL, base64Source, bucketImage, extractImages, image, imageUrl, isContentImage, isImage } from "./image.js";
 export type { ExtractImagesOptions } from "./image.js";
 export { mock } from "./mock.js";
 export type { MockBackend, MockCall, MockOptions } from "./mock.js";
