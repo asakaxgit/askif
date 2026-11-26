@@ -10,8 +10,18 @@ Ideas not yet done, roughly in priority order.
 - [x] Live smoke test against OpenAI (gpt-6-luna, 2026-09-30): `examples/basic.ts` ran clean, no
       `BAD_RESPONSE`; a yes/no + choice + scale batch took ~2.6 s.
 - [ ] Verify Bedrock accepts `response_format` on its OpenAI-compatible Chat Completions endpoints.
-- [ ] Settle Bedrock's default mantle path (SDK's `/openai/v1` vs. AWS docs' `/v1`).
-- [ ] Keep a verified/unverified provider list in the package README once live checks exist.
+      `live/bedrock.test.ts` (`pnpm run test:live:bedrock`, the `bedrock` job in `live.yml`) is
+      ready but has not been run, because no `AWS_BEARER_TOKEN_BEDROCK` is available. AWS's
+      structured-output page (checked 2026-11-27) names `response_format` for open-weight models,
+      but its table of supported APIs lists only `InvokeModel`/`Converse`. The schemas this backend
+      sends stay inside Bedrock's JSON Schema subset (offline test).
+- [x] Settle Bedrock's default mantle path (checked 2026-11-27 against openai SDK 7.23 and AWS
+      docs). The SDK derives `bedrock-mantle` `/openai/v1` from `awsRegion`. AWS says the mantle
+      prefix varies by model, and the gpt-oss cards put those models under `/v1`. The README and
+      examples always pass `baseURL` (`bedrock-runtime` `/openai/v1`, or `bedrock-mantle` `/v1`
+      for gpt-oss). An offline test pins the SDK default, and the live suite probes it.
+- [x] Keep a verified/unverified provider list in the package README (`## Verification` in
+      `packages/openai/README.md`). Update it when a live run passes.
 
 ## Live verification (needs credentials; only OpenAI and OpenJev/Codiv have been run so far)
 
@@ -20,7 +30,7 @@ Ideas not yet done, roughly in priority order.
 | OpenAI | `OPENAI_API_KEY` (done) |
 | Azure OpenAI | a resource with a deployment: endpoint, key, deployment name, a supported `apiVersion` |
 | Vertex AI | `@askif/vertex` covers ADC and the Jev fallback offline. A live call still needs a GCP project with Vertex enabled |
-| Bedrock | a Bedrock API key (`AWS_BEARER_TOKEN_BEDROCK`), a region with `openai.gpt-oss-*` enabled |
+| Bedrock | a Bedrock API key (`AWS_BEARER_TOKEN_BEDROCK`) and `AWS_REGION`, a region with `openai.gpt-oss-120b` enabled. The suite is `live/bedrock.test.ts` |
 | OpenRouter / Gemini | `OPENROUTER_API_KEY` / `GEMINI_API_KEY` |
 | Ollama / vLLM / LM Studio / llama.cpp | the server running locally with a model loaded |
 | OpenJev | a Codiv key (done), or a GPU/Apple-silicon host running openjev |
@@ -28,7 +38,7 @@ Ideas not yet done, roughly in priority order.
 - [x] A gated live suite (skipped unless the matching env var is set) for Jev, Clef, OpenAI, and
       Jev-via-OpenRouter: `live/*.test.ts`, `pnpm run test:live`, `.github/workflows/live.yml`, `.github/workflows/live-daily.yml` (`jev` and `clef` on the daily cron).
       OpenAI's run covers `response_format` on `gpt-6-luna`. Still needs credentials and is not
-      part of `pnpm run check`. Azure, Vertex, Bedrock, Gemini, and local servers are not in it.
+      part of `pnpm run check`. Bedrock is in it now (`live/bedrock.test.ts`, not run yet). Azure, Vertex, Gemini, and local servers are not.
 
 ## More OpenAI-compatible endpoints (docs + example only, just a `baseURL`)
 

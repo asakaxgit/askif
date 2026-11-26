@@ -321,6 +321,71 @@ test("a BedrockOpenAI client keeps its endpoint and bearer auth, and the given m
   assert.equal(schemaNameOf(request.body), "yesno_answer"); // still asks for a json_schema response
 });
 
+// Bedrock's structured outputs accept a subset of JSON Schema: every object must set
+// additionalProperties: false, at most 12 properties may be optional, and numeric or length
+// constraints are a 400. See docs.aws.amazon.com/bedrock/latest/userguide/structured-output.html.
+const BEDROCK_UNSUPPORTED = ["minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf", "minLength", "maxLength"];
+
+const assertBedrockSchema = (schema: Json | undefined, path: string): void => {
+  if (!isRecord(schema)) return;
+  for (const keyword of BEDROCK_UNSUPPORTED) assert.ok(!(keyword in schema), `${path} uses ${keyword}`);
+  if (schema["type"] === "object") {
+    assert.equal(schema["additionalProperties"], false, `${path} must set additionalProperties: false`);
+    const properties = schema["properties"];
+    assert.ok(isRecord(properties));
+    assert.deepEqual(schema["required"], Object.keys(properties), `${path} must require every property`);
+    for (const [key, value] of Object.entries(properties)) assertBedrockSchema(value, `${path}.${key}`);
+  }
+};
+
+test("every response_format schema stays inside Bedrock's structured-output subset", async () => {
+  const bodies: Json[] = [];
+  const client = routedClient(
+    {
+      yesno_answer: JSON.stringify({ probability: 0.9 }),
+      choice_answer: JSON.stringify({ animal: 0.9, tool: 0.1 }),
+      scale_answer: JSON.stringify({ "0": 0.1, "1": 0.9 }),
+    },
+    bodies,
+  );
+  const ask = createAsk({ backend: openai({ client }) });
+  await Promise.all([
+    ask.is("cat", "is animal"),
+    ask.switch("cat", "Which kind?").case("animal", "An animal").case("tool", "A tool"),
+    ask.score("cat", "Alive?").level("no", "Not alive").level("yes", "Alive"),
+  ]);
+
+  assert.equal(bodies.length, 3);
+  for (const body of bodies) {
+    assert.ok(isRecord(body) && isRecord(body["response_format"]));
+    const jsonSchema = body["response_format"]["json_schema"];
+    assert.ok(isRecord(jsonSchema));
+    assertBedrockSchema(jsonSchema["schema"], String(jsonSchema["name"]));
+  }
+});
+
+// Pins the openai SDK's derived default so an SDK upgrade that changes it is noticed. AWS's
+// gpt-oss model cards put bedrock-mantle at /v1, not /openai/v1, which is why the README and
+// examples pass an explicit baseURL instead of relying on this.
+test("BedrockOpenAI derives bedrock-mantle /openai/v1 from awsRegion alone", async () => {
+  const urls: string[] = [];
+  const client = new BedrockOpenAI({
+    apiKey: "bedrock-key",
+    awsRegion: "us-west-2",
+    maxRetries: 0,
+    fetch: async (url) => {
+      urls.push(String(url));
+      return completionResponse(JSON.stringify({ probability: 0.8 }));
+    },
+  });
+  const ask = createAsk({
+    backend: openai({ client, model: "openai.gpt-oss-120b", params: { reasoning_effort: "low" } }),
+  });
+
+  assert.equal(await ask.is("cat", "is animal"), true);
+  assert.deepEqual(urls, ["https://bedrock-mantle.us-west-2.api.aws/openai/v1/chat/completions"]);
+});
+
 test("images in the state go out as image_url parts after the text", async () => {
   const bodies: Json[] = [];
   const client = routedClient({ yesno_answer: JSON.stringify({ probability: 0.9 }) }, bodies);

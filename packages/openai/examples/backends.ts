@@ -67,9 +67,9 @@ const viaAzure = createAsk({
 // eagerly here.
 //
 // Two things to know:
-// - `BedrockOpenAI` derives a `bedrock-mantle` URL from `awsRegion`, but AWS
-//   recommends the `bedrock-runtime` endpoint for new applications — pass its
-//   `baseURL` explicitly to use that one.
+// - Pass `baseURL`. `BedrockOpenAI` derives `bedrock-mantle` `/openai/v1` from
+//   `awsRegion`, but gpt-oss is served under `/v1` on `bedrock-mantle`, and
+//   AWS recommends the `bedrock-runtime` endpoint (below) for new applications.
 // - `model` is required: the default (an OpenAI model id) doesn't exist on
 //   Bedrock. gpt-oss models are reasoning models, so set an effort via `params`.
 const viaBedrock = createAsk({

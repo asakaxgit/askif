@@ -6,7 +6,7 @@ on:
   workflow_call:
     inputs:
       backend:
-        description: jev, clef, openai, openrouter, or vercel
+        description: jev, clef, openai, openrouter, vercel, or bedrock
         required: true
         type: string
       name:
@@ -26,6 +26,10 @@ on:
         required: false
       AI_GATEWAY_API_KEY:
         required: false
+      AWS_BEARER_TOKEN_BEDROCK:
+        required: false
+      AWS_REGION:
+        required: false
 
 permissions:
   contents: read
@@ -43,6 +47,8 @@ jobs:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
       AI_GATEWAY_API_KEY: ${{ secrets.AI_GATEWAY_API_KEY }}
+      AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
     steps:
       - uses: actions/checkout@v4
       - id: secrets
@@ -62,6 +68,9 @@ jobs:
               ;;
             vercel)
               bash .github/scripts/require-live-secrets.sh AI_GATEWAY_API_KEY
+              ;;
+            bedrock)
+              bash .github/scripts/require-live-secrets.sh AWS_BEARER_TOKEN_BEDROCK AWS_REGION
               ;;
             *)
               echo "unknown backend: $BACKEND" >&2
@@ -84,19 +93,22 @@ jobs:
         run: |
           case "$BACKEND" in
             jev)
-              unset CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN OPENAI_API_KEY OPENROUTER_API_KEY AI_GATEWAY_API_KEY
+              unset CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN OPENAI_API_KEY OPENROUTER_API_KEY AI_GATEWAY_API_KEY AWS_BEARER_TOKEN_BEDROCK AWS_REGION
               ;;
             clef)
-              unset TYPESAFE_API_KEY OPENAI_API_KEY OPENROUTER_API_KEY AI_GATEWAY_API_KEY
+              unset TYPESAFE_API_KEY OPENAI_API_KEY OPENROUTER_API_KEY AI_GATEWAY_API_KEY AWS_BEARER_TOKEN_BEDROCK AWS_REGION
               ;;
             openai)
-              unset TYPESAFE_API_KEY CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN OPENROUTER_API_KEY AI_GATEWAY_API_KEY
+              unset TYPESAFE_API_KEY CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN OPENROUTER_API_KEY AI_GATEWAY_API_KEY AWS_BEARER_TOKEN_BEDROCK AWS_REGION
               ;;
             openrouter)
-              unset TYPESAFE_API_KEY CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN OPENAI_API_KEY AI_GATEWAY_API_KEY
+              unset TYPESAFE_API_KEY CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN OPENAI_API_KEY AI_GATEWAY_API_KEY AWS_BEARER_TOKEN_BEDROCK AWS_REGION
               ;;
             vercel)
-              unset TYPESAFE_API_KEY CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN OPENAI_API_KEY OPENROUTER_API_KEY
+              unset TYPESAFE_API_KEY CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN OPENAI_API_KEY OPENROUTER_API_KEY AWS_BEARER_TOKEN_BEDROCK AWS_REGION
+              ;;
+            bedrock)
+              unset TYPESAFE_API_KEY CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_API_TOKEN OPENAI_API_KEY OPENROUTER_API_KEY AI_GATEWAY_API_KEY
               ;;
             *)
               echo "unknown backend: $BACKEND" >&2
