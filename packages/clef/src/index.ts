@@ -1,4 +1,4 @@
-import { clipUntrusted, createAsk, extractImages, isAskError, makeAskError } from "askif";
+import { base64Source, clipUntrusted, createAsk, extractImages, isAskError, makeAskError } from "askif";
 import type { Answer, Backend, DecisionContext, Image, Json, Question } from "askif";
 import { stripJpegMetadataBase64 } from "./jpeg.js";
 
@@ -99,7 +99,8 @@ const MEDIA_TYPES: readonly string[] = ["image/png", "image/jpeg", "image/webp"]
 
 /** Moves the state's images into Clef's `images` field (see `extractImages` in askif for how they are found). */
 const toClefImages = (images: readonly Image[]): ClefImage[] =>
-  images.map(({ source }) => {
+  images.map((image) => {
+    const source = base64Source(image, "clef");
     if (!MEDIA_TYPES.includes(source.mediaType)) {
       throw makeAskError("UNSUPPORTED_INPUT", `Clef takes PNG, JPEG and WebP images, not ${source.mediaType}.`);
     }

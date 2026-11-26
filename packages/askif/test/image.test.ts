@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { createAsk, extractImages, image, isAskError, isImage, mock } from "../src/index.js";
+import { base64Source, createAsk, extractImages, image, imageUrl, isAskError, isImage, mock } from "../src/index.js";
 import type { Answer, Json } from "../src/index.js";
 
 const PNG = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
@@ -73,9 +73,13 @@ test("image() rejects a long run of padding quickly", () => {
   assert.ok(ms < baseline * 80 + 50, `image() ${ms.toFixed(1)}ms vs ${baseline.toFixed(1)}ms baseline`);
 });
 
-test("isImage() recognises images built by image() and nothing else", () => {
+test("isImage() recognises the image shape and nothing else", () => {
   assert.equal(isImage(image(PNG)), true);
-  assert.equal(isImage({ type: "image", source: { kind: "url", url: "https://x" } }), false);
+  assert.equal(isImage(imageUrl("https://example.com/a.png")), true);
+  assert.equal(isImage({ type: "image", source: { kind: "url", url: "https://x" } }), true);
+  assert.equal(isImage({ type: "image", source: { kind: "url" } }), false);
+  assert.equal(isImage({ type: "image", source: { kind: "bucket", provider: "ftp", bucket: "b", key: "k" } }), false);
+  assert.equal(isImage({ type: "image", source: { kind: "file", path: "/etc/passwd" } }), false);
   assert.equal(isImage("data:image/png;base64,AAAA"), false);
   assert.equal(isImage(null), false);
 });
@@ -97,7 +101,7 @@ test("extractImages() moves images out in order, whatever form they came in", ()
     other: { content_type: "text/plain", base64: "aGk=" },
   });
   assert.deepEqual(
-    images.map((i) => [i.source.mediaType, i.source.data]),
+    images.map((i) => [i.source.mediaType, base64Source(i, "mock").data]),
     [
       ["image/png", b64(PNG)],
       ["image/jpeg", b64(JPEG)],

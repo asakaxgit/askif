@@ -261,7 +261,34 @@ The model sees each image where you put it, and your question can refer to it as
 
 Tried so far on simple subjects: animals, everyday objects, shapes, a stop sign, a photograph of an old bicycle, Earth from the Moon. Subtler judgments, such as whether a photographed parcel is damaged, have not been tested here, so try your own photos (`@askif/clef` has `examples/try-image.ts` for that) before relying on one.
 
-A state with images sent to a backend that doesn't take them (or too many) fails with `UNSUPPORTED_INPUT` before any request, instead of sending base64 as text. Images are base64 only for now. Images that live in a bucket (R2, S3, GCS) or at a URL are planned: an image's `source` has a `kind` field so those can be added, and until then you download the bytes and pass them to `image()`. Backend authors: declare `limits.maxImages` and call `extractImages(state)` to get the images out of the state.
+A state with images sent to a backend that doesn't take them (or too many) fails with `UNSUPPORTED_INPUT` before any request, instead of sending base64 as text. Backend authors: declare `limits.maxImages` and call `extractImages(state)` to get the images out of the state.
+
+### Images at a URL or in a bucket
+
+`imageUrl(url)` and `bucketImage({ provider, bucket, key })` (provider `"r2"`, `"s3"` or `"gcs"`) put an image in the state without its bytes. A backend that fetches URLs itself gets the URL. For any other backend, askif calls your `resolveImage` before the request and sends the bytes it returns as base64:
+
+```ts
+import { bucketImage, createAsk, imageUrl } from "askif";
+
+const ask = createAsk({
+  backend,
+  // Return the bytes, or image(bytes, mediaType) to set the type. Each distinct source is resolved once per request.
+  resolveImage: async (source) => {
+    if (source.kind === "url") return new Uint8Array(await (await fetch(source.url)).arrayBuffer());
+    return downloadFromBucket(source.provider, source.bucket, source.key); // your S3 / R2 / GCS client
+  },
+});
+
+await ask.if({ photo: bucketImage({ provider: "r2", bucket: "returns", key: "2026/11/parcel.jpg" }) }, "shows a damaged parcel");
+```
+
+- Without `resolveImage`, a URL or bucket image sent to a backend that can't fetch it fails with `UNSUPPORTED_INPUT` before any request. It still counts against `maxImages`.
+- If `resolveImage` throws, the questions about that state fail with `UNSUPPORTED_INPUT` (the error is in `cause`). Other states in the same tick are still sent.
+- askif lifts and resolves only the values that `imageUrl()` / `bucketImage()` returned. A `{ type: "image", source: { kind: "url" } }` look-alike in state JSON stays text and is never fetched, so a user-supplied state can't make your server fetch an address. If URLs come from users, check them in `resolveImage` before you fetch.
+- `@askif/openai` advertises `imageSources: ["url"]` when it talks to OpenAI itself (no `baseURL` or `client`), and passes the URL through. Compatible endpoints are not assumed to fetch URLs. Set `openai({ imageUrls: true })` for one that does. No backend reads buckets directly.
+- Backend authors: list the kinds your backend fetches in `imageSources` (base64 is implied). A base64-only backend reads an image with `base64Source(image, name)`, which throws `UNSUPPORTED_INPUT` if the backend was called directly with a remote image. `fallback()` advertises only the kinds both backends read.
+
+Batching compares states by their JSON, computed once per question. A URL or bucket image keeps that key short. With multi-MB base64 states, the key grows with the image, but hashing it would let two different states collide, so askif keeps the exact JSON.
 
 ## Configuration
 
@@ -424,7 +451,7 @@ try {
 | `CHAIN_STARTED`       | A chain method was called after the question was sent   |
 | `BACKEND_FAILED`      | The backend call failed. The original error is in `cause` |
 | `BACKEND_UNAVAILABLE` | A backend's own dependency is missing (e.g. `@typesafe-ai/sdk` for `@askif/jev`, `openai` for `@askif/openai`) |
-| `UNSUPPORTED_INPUT`   | The state has something the backend can't take: images for a text-only backend, too many images, an unsupported image format, unreadable image data, or a state over `protection.maxStateChars` |
+| `UNSUPPORTED_INPUT`   | The state has something the backend can't take: images for a text-only backend, too many images, an unsupported image format, unreadable image data, a URL or bucket image with no `resolveImage` (or one that failed), or a state over `protection.maxStateChars` |
 | `BAD_RESPONSE`        | The backend's answer did not match the question         |
 
 ## Writing good questions

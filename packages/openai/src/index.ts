@@ -1,5 +1,5 @@
 import type { ClientOptions, OpenAI } from "openai";
-import { clipUntrusted, createAsk, extractImages, makeAskError } from "askif";
+import { base64Source, clipUntrusted, createAsk, extractImages, makeAskError } from "askif";
 import type { Answer, Backend, DecisionContext, Image, Json, Question } from "askif";
 
 // Re-exported so a caller connecting to Azure OpenAI or Amazon Bedrock
@@ -40,6 +40,12 @@ export type OpenAIOptions = ClientOptions & {
    * reject `response_format: json_schema` (Ollama, some llama.cpp builds).
    */
   readonly structuredOutput?: OpenAIStructuredOutput;
+  /**
+   * Send `imageUrl()` images as URLs for the endpoint to fetch, and advertise `imageSources: ["url"]`.
+   * Default true for OpenAI itself (no `baseURL` or `client`), false otherwise: many compatible
+   * endpoints don't fetch URLs, so askif downloads them with `resolveImage` first.
+   */
+  readonly imageUrls?: boolean;
 };
 
 const DEFAULT_MODEL = "gpt-6-luna";
@@ -52,18 +58,30 @@ const IMAGE_TYPES: readonly string[] = ["image/png", "image/jpeg", "image/webp",
 
 type UserContent = CreateParams["messages"][number] extends infer M ? (M extends { role: "user"; content: infer C } ? C : never) : never;
 
-/** The user message: plain text, or the text followed by each image as an `image_url` data URL. */
-const userContent = (text: string, images: readonly Image[]): UserContent => {
+const checkImageType = (mediaType: string | undefined): void => {
+  if (mediaType !== undefined && !IMAGE_TYPES.includes(mediaType)) {
+    throw makeAskError("UNSUPPORTED_INPUT", `OpenAI takes PNG, JPEG, WebP and GIF images, not ${mediaType}.`);
+  }
+};
+
+/** The image as an `image_url`: the URL itself when the endpoint fetches URLs, otherwise a data URL. */
+const imageUrlOf = (image: Image, fetchesUrls: boolean): string => {
+  if (fetchesUrls && image.source.kind === "url") {
+    checkImageType(image.source.mediaType);
+    return image.source.url;
+  }
+  const source = base64Source(image, "openai");
+  checkImageType(source.mediaType);
+  return `data:${source.mediaType};base64,${source.data}`;
+};
+
+/** The user message: plain text, or the text followed by each image as an `image_url`. */
+const userContent = (text: string, images: readonly Image[], fetchesUrls: boolean): UserContent => {
   if (images.length === 0) return text;
   const attached = images.map((_, i) => `[image ${i + 1}]`).join(", ");
   return [
     { type: "text", text: `${text}\n\nAttached images, in order: ${attached}.` },
-    ...images.map(({ source }) => {
-      if (!IMAGE_TYPES.includes(source.mediaType)) {
-        throw makeAskError("UNSUPPORTED_INPUT", `OpenAI takes PNG, JPEG, WebP and GIF images, not ${source.mediaType}.`);
-      }
-      return { type: "image_url" as const, image_url: { url: `data:${source.mediaType};base64,${source.data}` } };
-    }),
+    ...images.map((image) => ({ type: "image_url" as const, image_url: { url: imageUrlOf(image, fetchesUrls) } })),
   ];
 };
 
@@ -316,6 +334,7 @@ export const openai = (options: OpenAIOptions = {}): Backend => {
     params,
     protection = true,
     structuredOutput = "json_schema",
+    imageUrls = options.baseURL === undefined && client === undefined,
     ...clientConfig
   } = options;
   const schemaInPrompt = structuredOutput !== "json_schema";
@@ -355,7 +374,7 @@ export const openai = (options: OpenAIOptions = {}): Backend => {
       model,
       messages: [
         { role: "system", content: systemPrompt(nonce) },
-        { role: "user", content: userContent(prompt, images) },
+        { role: "user", content: userContent(prompt, images, imageUrls) },
       ],
       ...responseFormatFor(structuredOutput, schema),
       ...reasoningEffort,
@@ -367,6 +386,7 @@ export const openai = (options: OpenAIOptions = {}): Backend => {
   return {
     name: "openai",
     limits: LIMITS,
+    ...(imageUrls ? { imageSources: ["url"] as const } : {}),
     decide: async (state, questions, context?: DecisionContext) => {
       const protectPrompts = protection && context?.protection !== false;
       const explicit = context?.images === "explicit";

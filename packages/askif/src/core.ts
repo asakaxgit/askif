@@ -1,7 +1,7 @@
 import { isAskError, makeAskError } from "./errors.js";
 import type { AskError } from "./errors.js";
 import { DEFAULT_PROTECTION, effectiveProtection, looksInjected, reduceDescription, reduceState } from "./guard.js";
-import { extractImages } from "./image.js";
+import { extractImages, image, isImage, isTrustedImage } from "./image.js";
 import type {
   Answer,
   Ask,
@@ -23,10 +23,14 @@ import type {
   IfResult,
   IfThenResult,
   IfUnsureResult,
+  Image,
+  ImageSourceKind,
+  Json,
   ProtectionConfig,
   Question,
   QuestionResult,
   Ranked,
+  RemoteImageSource,
   ScaleAnswer,
   ScaleQuestion,
   ScoreChain,
@@ -138,8 +142,12 @@ const checkCount = (what: "options" | "levels", count: number, max: number | und
 type Pending = {
   readonly question: Question;
   readonly state: State;
+  /** `JSON.stringify(state)`, computed once. Batching compares states by it. */
+  readonly stateKey: string;
   /** Images in `state`. A repeated state contributes this once per request. */
   readonly imageCount: number;
+  /** `state` holds an image the backend can't read itself, so `resolveImage` runs before the call. */
+  readonly remote: boolean;
   /** One injection scan of `state`, shared by every question in the batch. */
   readonly suspected: boolean;
   readonly context: DecisionContext;
@@ -222,23 +230,94 @@ export const createAsk = (init: { readonly backend: Backend } & AskOptions): Ask
     else item.reject(badAnswer(backend, item));
   };
 
-  const send = async (backend: Backend, state: State, items: readonly Pending[]): Promise<void> => {
+  const reads = (backend: Backend, kind: ImageSourceKind): boolean =>
+    kind === "base64" || (backend.imageSources?.includes(kind) ?? false);
+
+  // Origin and path only: a presigned URL's query string is a credential and must not reach an error log.
+  const describeSource = (source: RemoteImageSource): string => {
+    if (source.kind === "bucket") return `the ${source.provider} image ${source.bucket}/${source.key}`;
+    const url = URL.canParse(source.url) ? new URL(source.url) : undefined;
+    return `the url image ${url === undefined ? "(unparseable)" : `${url.origin}${url.pathname}`}`;
+  };
+
+  /** `resolveImage`'s result as a trusted base64 image. */
+  const download = async (source: RemoteImageSource): Promise<Image> => {
+    const resolver = config.resolveImage;
+    if (resolver === undefined) throw makeAskError("UNSUPPORTED_INPUT", `No resolveImage for ${describeSource(source)}.`);
+    try {
+      const resolved = await resolver(source);
+      if (resolved instanceof Uint8Array) return image(resolved, source.mediaType);
+      if (resolved.source.kind !== "base64") {
+        throw makeAskError("UNSUPPORTED_INPUT", `resolveImage returned a ${resolved.source.kind} image; return bytes or image().`);
+      }
+      return image(resolved.source.data, resolved.source.mediaType);
+    } catch (error) {
+      if (isAskError(error)) throw error;
+      throw makeAskError("UNSUPPORTED_INPUT", `resolveImage failed for ${describeSource(source)}.`, error);
+    }
+  };
+
+  /** `state` with each image the backend can't read swapped for its download. `cache` dedupes sources in one request. */
+  const resolveState = async (backend: Backend, state: State, cache: Map<string, Promise<Image>>): Promise<State> => {
+    const walk = async (value: Json): Promise<Json> => {
+      if (Array.isArray(value)) return Promise.all(value.map(walk));
+      if (value === null || typeof value !== "object") return value;
+      if (isImage(value)) {
+        const { source } = value;
+        if (source.kind === "base64" || reads(backend, source.kind) || !isTrustedImage(value)) return value;
+        const key = JSON.stringify(source);
+        const pending = cache.get(key) ?? download(source);
+        cache.set(key, pending);
+        return pending;
+      }
+      const entries = await Promise.all(Object.entries(value).map(async ([key, entry]) => [key, await walk(entry)] as const));
+      return Object.fromEntries(entries);
+    };
+    return walk(state);
+  };
+
+  /** Resolves remote images once per distinct state. Items whose download failed are rejected and dropped. */
+  const resolveItems = async (backend: Backend, items: readonly Pending[]): Promise<Pending[]> => {
+    if (!items.some((item) => item.remote)) return [...items];
+    const cache = new Map<string, Promise<Image>>();
+    const states = new Map<string, Promise<State>>();
+    const ready = await Promise.all(
+      items.map(async (item): Promise<Pending | undefined> => {
+        if (!item.remote) return item;
+        const resolving = states.get(item.stateKey) ?? resolveState(backend, item.state, cache);
+        states.set(item.stateKey, resolving);
+        try {
+          return { ...item, state: await resolving, remote: false };
+        } catch (error) {
+          item.reject(error);
+          return undefined;
+        }
+      }),
+    );
+    return ready.filter((item) => item !== undefined);
+  };
+
+  const send = async (backend: Backend, pending: readonly Pending[]): Promise<void> => {
+    const items = await resolveItems(backend, pending);
+    const first = items[0];
+    if (first === undefined) return;
     const questions = Object.fromEntries(items.map((item, i) => [`q${i}`, item.question]));
     try {
-      const answers = await backend.decide(state, questions, items[0]?.context);
+      const answers = await backend.decide(first.state, questions, first.context);
       items.forEach((item, i) => accept(backend, item, answers[`q${i}`]));
     } catch (error) {
       rejectAll(backend, items, error);
     }
   };
 
-  const sendMany = async (backend: Backend, items: readonly Pending[]): Promise<void> => {
+  const sendMany = async (backend: Backend, pending: readonly Pending[]): Promise<void> => {
+    const items = await resolveItems(backend, pending);
     const decideMany = backend.decideMany;
     const first = items[0];
-    const distinct = new Set(items.map((item) => JSON.stringify(item.state)));
+    const distinct = new Set(items.map((item) => item.stateKey));
     // One state keeps the original `decide` wire format: no composite, no rewritten question.
     if (decideMany === undefined || first === undefined || distinct.size < 2) {
-      if (first !== undefined) await send(backend, first.state, items);
+      if (first !== undefined) await send(backend, items);
       return;
     }
     const payload = items.map((item, i) => ({
@@ -283,7 +362,7 @@ export const createAsk = (init: { readonly backend: Backend } & AskOptions): Ask
       images = 0;
     };
     for (const item of items) {
-      const key = JSON.stringify(item.state);
+      const key = item.stateKey;
       const seen = states.has(key);
       const addsImages = seen ? 0 : item.imageCount;
       const overBudget =
@@ -320,11 +399,7 @@ export const createAsk = (init: { readonly backend: Backend } & AskOptions): Ask
       const many = maxStates > 1 && backend.decideMany !== undefined;
       for (const group of groups.values()) {
         for (const chunk of pack(group, maxQuestions, maxStates, maxImages)) {
-          if (many) void sendMany(backend, chunk);
-          else {
-            const first = chunk[0];
-            if (first !== undefined) void send(backend, first.state, chunk);
-          }
+          void (many ? sendMany(backend, chunk) : send(backend, chunk));
         }
       }
     }
@@ -351,13 +426,20 @@ export const createAsk = (init: { readonly backend: Backend } & AskOptions): Ask
           images: protection === false ? "auto" : protection.images,
         };
         const byState = queues.get(backend) ?? new Map<string, Batch>();
-        const key = JSON.stringify([reduced, context]);
+        // Serialized once per question. A URL or bucket image keeps this short; base64 is the bulk of it.
+        const stateKey = JSON.stringify(reduced);
+        const key = `${JSON.stringify(context)}${stateKey}`;
         const existing = byState.get(key);
         // One scan per reduced state. A chain of conditions on that state reuses the first result.
         suspected = existing !== undefined ? existing.suspected : protection !== false && looksInjected(reduced);
         routeUnsure = protection !== false && protection.unsureOnInjection && suspected;
-        const imageCount = extractImages(reduced, context.images === "explicit" ? { only: "image" } : {}).images.length;
-        const problem = imageProblem(backend, imageCount);
+        const found = extractImages(reduced, context.images === "explicit" ? { only: "image" } : {}).images;
+        const unread = found.find((entry) => !reads(backend, entry.source.kind));
+        const problem =
+          imageProblem(backend, found.length) ??
+          (unread !== undefined && config.resolveImage === undefined
+            ? `The ${backend.name} backend can't fetch ${unread.source.kind} images. Pass resolveImage to createAsk to download them.`
+            : undefined);
         if (problem !== undefined) {
           reject(makeAskError("UNSUPPORTED_INPUT", problem));
           return;
@@ -365,7 +447,17 @@ export const createAsk = (init: { readonly backend: Backend } & AskOptions): Ask
         queues.set(backend, byState);
         const batch = existing ?? { backend, state: reduced, items: [], suspected };
         byState.set(key, batch);
-        batch.items.push({ question, state: reduced, imageCount, context, suspected, resolve, reject });
+        batch.items.push({
+          question,
+          state: reduced,
+          stateKey,
+          imageCount: found.length,
+          remote: unread !== undefined,
+          context,
+          suspected,
+          resolve,
+          reject,
+        });
         if (!flushScheduled) {
           flushScheduled = true;
           // Two hops: chains start on the next microtask, so a direct call like
