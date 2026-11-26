@@ -58,14 +58,17 @@ test("@askif/clef: a PNG image answers through clef-flash", live, async () => {
 
 // The reported failure was HTTP 413 on `clef` (65,536-token window) for a small JPEG that
 // carried EXIF and 250 DPI. bicycle.jpg is the closest fixture (720×600, no EXIF); the DPI
-// segment is added in memory. Either the historical 413 or a real probability is a result.
-// Any other error fails the test. The diagnostic says which one happened.
+// segment is added in memory. The first test sends it untouched (`imageMetadata: "keep"`), so
+// either the historical 413 or a real probability is a result. The second uses the default
+// "retry", which resends without metadata after a 413. Any other error fails the test.
+// The diagnostics say which one happened.
+const probe = (): ReturnType<typeof image> => image(withDpiExif(fixtureBytes("public-domain/bicycle.jpg"), 250));
+
 test("@askif/clef: HTTP 413 probe, 720px JPEG with 250 DPI EXIF, model clef", live, async (t) => {
   const seen: SeenRequest[] = [];
-  const ask = createAsk({ backend: clef({ model: "clef", fetch: recordingFetch(seen) }) });
-  const photo = image(withDpiExif(fixtureBytes("public-domain/bicycle.jpg"), 250));
+  const ask = createAsk({ backend: clef({ model: "clef", imageMetadata: "keep", fetch: recordingFetch(seen) }) });
   try {
-    const probability = await ask.probability({ photo }, "shows a bicycle");
+    const probability = await ask.probability({ photo: probe() }, "shows a bicycle");
     assertProbability(probability, "413 probe");
     const call = onlyCall(seen);
     assert.ok(endsWithModel(call.url, "clef"));
@@ -78,7 +81,28 @@ test("@askif/clef: HTTP 413 probe, 720px JPEG with 250 DPI EXIF, model clef", li
     assert.match(askError.message, /HTTP 413/);
     const call = onlyCall(seen);
     assert.ok(endsWithModel(call.url, "clef"));
-    t.diagnostic("Clef refused the 250 DPI JPEG with HTTP 413.");
+    t.diagnostic(`Clef refused the 250 DPI JPEG with HTTP 413: ${askError.message}`);
+  }
+});
+
+test("@askif/clef: the 413 retry without JPEG metadata, model clef", live, async (t) => {
+  const seen: SeenRequest[] = [];
+  const ask = createAsk({ backend: clef({ model: "clef", fetch: recordingFetch(seen) }) });
+  try {
+    const probability = await ask.probability({ photo: probe() }, "shows a bicycle");
+    assertProbability(probability, "413 retry");
+    assert.ok(seen.length === 1 || seen.length === 2, `${seen.length} requests`);
+    t.diagnostic(
+      seen.length === 2
+        ? `HTTP 413, then the retry without metadata answered (probability ${probability.toFixed(3)}).`
+        : `Answered on the first request (probability ${probability.toFixed(3)}); no retry was needed.`,
+    );
+  } catch (error) {
+    const askError = assertAskError(error);
+    assert.equal(askError.code, "BACKEND_FAILED");
+    assert.match(askError.message, /HTTP 413/);
+    assert.equal(seen.length, 2);
+    t.diagnostic(`HTTP 413 even without metadata, so metadata is not the cause: ${askError.message}`);
   }
 });
 
