@@ -93,6 +93,64 @@ const viaGemini = createAsk({
   }),
 });
 
+// Hosted providers with a plain API key: a `baseURL` and the provider's own
+// `model` id. Check each provider's model list for current ids.
+const viaGroq = createAsk({
+  backend: openai({
+    apiKey: process.env.GROQ_API_KEY,
+    baseURL: "https://api.groq.com/openai/v1",
+    model: "openai/gpt-oss-120b", // one of Groq's strict `json_schema` models
+  }),
+});
+// These document `response_format: json_schema`, so the default
+// `structuredOutput` applies. The model ids are left to you.
+const hostedBaseURLs = {
+  together: "https://api.together.ai/v1",
+  fireworks: "https://api.fireworks.ai/inference/v1",
+  deepinfra: "https://api.deepinfra.com/v1/openai",
+  mistral: "https://api.mistral.ai/v1",
+  xai: "https://api.x.ai/v1",
+  cerebras: "https://api.cerebras.ai/v1",
+} as const satisfies Record<string, string>;
+const viaHosted = Object.values(hostedBaseURLs).map((baseURL) =>
+  createAsk({ backend: openai({ apiKey: process.env.LLM_API_KEY, baseURL, model: process.env.LLM_MODEL }) }),
+);
+// DeepSeek documents JSON mode only, so ask for `json_object`; the schema
+// goes into the prompt, which also covers DeepSeek's "the prompt must say
+// json" rule.
+const viaDeepSeek = createAsk({
+  backend: openai({
+    apiKey: process.env.DEEPSEEK_API_KEY,
+    baseURL: "https://api.deepseek.com",
+    model: "deepseek-flash",
+    structuredOutput: "json_object",
+  }),
+});
+
+// Gateways are a `baseURL` too. LiteLLM's proxy takes a virtual key, and
+// `model` is a `model_name` from the proxy's config.
+const viaLiteLLM = createAsk({
+  backend: openai({
+    apiKey: process.env.LITELLM_API_KEY,
+    baseURL: "http://localhost:4000/v1",
+    model: "gpt-6-luna",
+  }),
+});
+// Cloudflare AI Gateway's unified `/compat` endpoint, with the provider's key
+// as `apiKey` and the gateway token in `cf-aig-authorization` (an
+// authenticated gateway). With keys stored in Cloudflare, pass the Cloudflare
+// token as `apiKey` instead and drop the header. `model` is
+// `{provider}/{model}`.
+const viaCloudflare = createAsk({
+  backend: openai({
+    apiKey: process.env.OPENAI_API_KEY,
+    defaultHeaders: { "cf-aig-authorization": `Bearer ${process.env.CF_AIG_TOKEN ?? ""}` },
+    baseURL: `https://gateway.ai.cloudflare.com/v1/${process.env.CF_ACCOUNT_ID ?? "account-id"}/default/compat`,
+    model: "openai/gpt-6-luna",
+  }),
+});
+// Vercel AI Gateway: use @askif/vercel (its Decision API) instead.
+
 // Local servers speak the same protocol on localhost, so it's the same
 // `baseURL` override. Ollama ignores the key but the SDK needs a non-empty
 // one; `model` is whatever you've pulled/loaded.
@@ -115,4 +173,9 @@ assert.equal(typeof viaVertexAI.if, "function");
 assert.equal(typeof viaAzure.if, "function");
 assert.equal(typeof viaBedrock.if, "function");
 assert.equal(typeof viaGemini.if, "function");
+assert.equal(typeof viaGroq.if, "function");
+for (const viaProvider of viaHosted) assert.equal(typeof viaProvider.if, "function");
+assert.equal(typeof viaDeepSeek.if, "function");
+assert.equal(typeof viaLiteLLM.if, "function");
+assert.equal(typeof viaCloudflare.if, "function");
 assert.equal(typeof viaOllama.if, "function");
