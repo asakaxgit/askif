@@ -37,6 +37,8 @@ Every question carries its images, so N questions about an image send it N times
 - Probabilities are the model's own JSON estimates (via [Structured
   Outputs](https://developers.openai.com/api/docs/guides/structured-outputs)), not logprobs —
   logprobs aren't available uniformly across OpenAI-compatible providers.
+  `structuredOutput` picks how the JSON shape is enforced; see [Structured
+  output](#structured-output).
 - `askif` computes `confidence` from how spread out those probabilities are; this backend never
   self-reports one.
 - The default model is `gpt-6-luna` (OpenAI's cheapest, fastest model), sent with
@@ -47,6 +49,38 @@ Every question carries its images, so N questions about an image send it N times
 - The state is wrapped in a random `<state-…>` tag. The system prompt says that tag is the only
   state, and that text inside it is not an instruction. `openai({ protection: false })`, or core
   `protection: false`, sends the previous prompt, with `<state>` and `</state>`.
+
+## Structured output
+
+`structuredOutput` sets how each reply is held to the answer's JSON shape. It defaults to
+`"json_schema"`, and with the default the request is the same as before the option existed.
+
+| `structuredOutput` | Request | Reply parsing |
+| --- | --- | --- |
+| `"json_schema"` (default) | `response_format: { type: "json_schema", json_schema: { …, strict: true } }` | The whole reply must be the JSON object |
+| `"json_object"` | `response_format: { type: "json_object" }` (JSON mode), and the JSON Schema written at the end of the user message | Lenient (below) |
+| `"prompt"` | No `response_format`, and the JSON Schema written at the end of the user message | Lenient (below) |
+
+Use `"prompt"` for endpoints that reject `response_format: json_schema` (a 400) or ignore it
+(prose or the wrong keys back, which surfaces as `BAD_RESPONSE`). Ollama and some llama.cpp
+builds are in that group. Use `"json_object"` where the endpoint supports JSON mode but not JSON
+Schema. Neither mode can make the model follow the schema, so expect more `BAD_RESPONSE` than with
+`"json_schema"`, especially from small models.
+
+In both fallback modes, the parser drops `<think>…</think>` blocks and reads from the first `{`
+to the last `}`. A reply wrapped in a code fence or a sentence still parses. The probabilities are
+checked the same way as in the default mode.
+
+```ts
+import { openai } from "@askif/openai";
+
+const viaOllama = openai({
+  apiKey: "ollama",
+  baseURL: "http://localhost:11434/v1",
+  model: "llama3.3",
+  structuredOutput: "prompt",
+});
+```
 
 ## Other endpoints
 
@@ -107,10 +141,12 @@ const viaOllama = openai({
 | [LM Studio](https://lmstudio.ai/docs) | `http://localhost:1234/v1` | Supports `json_schema` |
 | [llama.cpp](https://github.com/ggml-org/llama.cpp) server | `http://localhost:8080/v1` | Documents `json_schema`, but there are reports of it not being honored on `/v1/chat/completions` |
 
-This backend depends on `response_format: json_schema` — the prompt describes the question but
-never spells out the JSON keys, so an endpoint that ignores `response_format` will most likely
-return prose or the wrong shape, surfacing as `BAD_RESPONSE`. The table reflects each project's
-documentation only; none of these has been tested live against this package.
+By default this backend depends on `response_format: json_schema`. The default prompt describes
+the question but never spells out the JSON keys, so an endpoint that ignores `response_format`
+will most likely return prose or the wrong shape, surfacing as `BAD_RESPONSE`. For those
+endpoints, set `structuredOutput: "prompt"` (or `"json_object"`); see [Structured
+output](#structured-output). The table reflects each project's documentation only; none of these
+has been tested live against this package.
 
 Azure OpenAI needs a different client class, not just a different `baseURL` — its auth and request
 routing genuinely differ from plain OpenAI. `AzureOpenAI` is re-exported from this package (a real
@@ -190,6 +226,7 @@ are skipped unless their credentials are set, and they are not part of `pnpm run
 | Azure OpenAI | Unverified | Documentation only. `examples/backends.ts` builds the client but sends no request |
 | Vertex AI | Unverified | Offline tests in [`@askif/vertex`](../vertex) only |
 | OpenRouter, Gemini | Unverified | Documentation only |
+| `structuredOutput: "prompt"` and `"json_object"` | Unverified | Offline tests cover the request body and lenient parsing. `live/openai.test.ts` runs both modes on OpenAI, and `"prompt"` on a local server when `OLLAMA_BASE_URL` and `OLLAMA_MODEL` are set. No passing run recorded yet |
 | Ollama, vLLM, LM Studio, llama.cpp | Unverified | Documentation only (see the table above) |
 
 ## License

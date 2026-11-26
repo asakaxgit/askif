@@ -14,6 +14,14 @@ type CreateParams = OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreami
 type ReasoningEffort = OpenAI.Chat.Completions.ChatCompletionReasoningEffort;
 type ChatCompletion = OpenAI.Chat.Completions.ChatCompletion;
 
+/**
+ * How the reply is held to the answer's JSON shape.
+ * - `"json_schema"`: Structured Outputs (`response_format: json_schema`, strict). The default.
+ * - `"json_object"`: JSON mode (`response_format: json_object`), with the schema written into the prompt.
+ * - `"prompt"`: no `response_format`; the schema is written into the prompt only.
+ */
+export type OpenAIStructuredOutput = "json_schema" | "json_object" | "prompt";
+
 export type OpenAIOptions = ClientOptions & {
   /** Model id. Default: "gpt-6-luna", sent with `reasoning_effort: "none"`. */
   readonly model?: string;
@@ -27,6 +35,11 @@ export type OpenAIOptions = ClientOptions & {
    * even when core protection is on.
    */
   readonly protection?: boolean;
+  /**
+   * Default `"json_schema"`. Use `"json_object"` or `"prompt"` for endpoints that ignore or
+   * reject `response_format: json_schema` (Ollama, some llama.cpp builds).
+   */
+  readonly structuredOutput?: OpenAIStructuredOutput;
 };
 
 const DEFAULT_MODEL = "gpt-6-luna";
@@ -195,7 +208,37 @@ const userMessage = (state: Json, question: Question, nonce: string | undefined)
   }
 };
 
-const readNumber = (record: Readonly<Record<string, unknown>>, key: string): number => {
+/** Appended to the user message when `response_format` can't carry the schema. */
+const schemaInstructions = (schema: Schema["schema"]): string =>
+  `\n\nReply with only a JSON object, and no other text, that matches this JSON Schema:\n${JSON.stringify(schema)}`;
+
+type ResponseFormat = { readonly response_format?: CreateParams["response_format"] };
+
+const responseFormatFor = (mode: OpenAIStructuredOutput, { name, schema }: Schema): ResponseFormat => {
+  switch (mode) {
+    case "json_schema":
+      return { response_format: { type: "json_schema", json_schema: { name, schema, strict: true } } };
+    case "json_object":
+      return { response_format: { type: "json_object" } };
+    case "prompt":
+      return {};
+    default:
+      return mode satisfies never;
+  }
+};
+
+/**
+ * The JSON object in a reply nothing enforced: drops `<think>` blocks, then takes the text from
+ * the first `{` to the last `}`, so a code fence or a sentence around the object still parses.
+ */
+const looseJson = (content: string): string => {
+  const text = content.replace(/<think>[\s\S]*?<\/think>/g, "");
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  return start === -1 || end < start ? text : text.slice(start, end + 1);
+};
+
+const readNumber =(record: Readonly<Record<string, unknown>>, key: string): number => {
   const value = record[key];
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
     throw makeAskError("BAD_RESPONSE", `OpenAI returned a missing or invalid probability for "${key}".`);
@@ -210,7 +253,7 @@ const normalize = (values: readonly number[]): readonly number[] => {
   return values.map((value) => value / sum);
 };
 
-const fromCompletion = (question: Question, completion: ChatCompletion): Answer => {
+const fromCompletion = (question: Question, completion: ChatCompletion, loose: boolean): Answer => {
   const choice = completion.choices[0];
   if (choice === undefined) throw makeAskError("BAD_RESPONSE", "OpenAI returned no choices.");
 
@@ -228,7 +271,7 @@ const fromCompletion = (question: Question, completion: ChatCompletion): Answer 
 
   let parsed: unknown;
   try {
-    parsed = JSON.parse(content);
+    parsed = JSON.parse(loose ? looseJson(content) : content);
   } catch (error) {
     throw makeAskError("BAD_RESPONSE", "OpenAI returned a response that was not valid JSON.", error);
   }
@@ -267,7 +310,15 @@ const fromCompletion = (question: Question, completion: ChatCompletion): Answer 
  * when this backend is actually used.
  */
 export const openai = (options: OpenAIOptions = {}): Backend => {
-  const { model = DEFAULT_MODEL, client, params, protection = true, ...clientConfig } = options;
+  const {
+    model = DEFAULT_MODEL,
+    client,
+    params,
+    protection = true,
+    structuredOutput = "json_schema",
+    ...clientConfig
+  } = options;
+  const schemaInPrompt = structuredOutput !== "json_schema";
   let clientPromise: Promise<OpenAI> | undefined;
 
   const loadClient = async (): Promise<OpenAI> => {
@@ -290,7 +341,7 @@ export const openai = (options: OpenAIOptions = {}): Backend => {
     }));
 
   const askOne = async (state: Json, question: Question, protectPrompts: boolean, explicit: boolean): Promise<Answer> => {
-    const { name, schema } = schemaFor(question);
+    const schema = schemaFor(question);
     const { state: text, images } = extractImages(state, explicit ? { only: "image" } : {});
     const nonce = protectPrompts ? nonceFor(renderJson(text)) : undefined;
     // Reasoning models default to something above "none", adding latency for no benefit
@@ -298,18 +349,19 @@ export const openai = (options: OpenAIOptions = {}): Backend => {
     // caller picked may reject an effort field it doesn't recognize.
     const reasoningEffort: { reasoning_effort?: ReasoningEffort } =
       options.model === undefined ? { reasoning_effort: "none" } : {};
+    const prompt = userMessage(text, question, nonce) + (schemaInPrompt ? schemaInstructions(schema.schema) : "");
     const openaiClient = await getClient();
     const completion = await openaiClient.chat.completions.create({
       model,
       messages: [
         { role: "system", content: systemPrompt(nonce) },
-        { role: "user", content: userContent(userMessage(text, question, nonce), images) },
+        { role: "user", content: userContent(prompt, images) },
       ],
-      response_format: { type: "json_schema", json_schema: { name, schema, strict: true } },
+      ...responseFormatFor(structuredOutput, schema),
       ...reasoningEffort,
       ...params,
     });
-    return fromCompletion(question, completion);
+    return fromCompletion(question, completion, schemaInPrompt);
   };
 
   return {
