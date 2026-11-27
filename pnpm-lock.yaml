@@ -203,7 +203,7 @@ importers:
   packages/clef:
     dependencies:
       askif:
-        specifier: ^0.2.0
+        specifier: ^0.3.0
         version: link:../askif
     devDependencies:
       '@types/node':
@@ -222,7 +222,7 @@ importers:
         specifier: ^0.7.0
         version: 0.7.0
       askif:
-        specifier: ^0.2.0
+        specifier: ^0.3.0
         version: link:../askif
     devDependencies:
       '@types/node':
@@ -238,7 +238,7 @@ importers:
   packages/openai:
     dependencies:
       askif:
-        specifier: ^0.2.0
+        specifier: ^0.3.0
         version: link:../askif
       openai:
         specifier: ^7.23.0
@@ -257,7 +257,7 @@ importers:
   packages/vercel:
     dependencies:
       askif:
-        specifier: ^0.2.0
+        specifier: ^0.3.0
         version: link:../askif
     devDependencies:
       '@types/node':
@@ -279,13 +279,13 @@ importers:
   packages/vertex:
     dependencies:
       '@askif/jev':
-        specifier: ^0.1.2
+        specifier: ^0.2.0
         version: link:../jev
       '@askif/openai':
-        specifier: ^0.1.1
+        specifier: ^0.2.0
         version: link:../openai
       askif:
-        specifier: ^0.2.0
+        specifier: ^0.3.0
         version: link:../askif
       google-auth-library:
         specifier: ^10.5.0
