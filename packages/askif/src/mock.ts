@@ -23,6 +23,8 @@ export type MockManyCall = {
 export type MockOptions = {
   /** When true, different states from one tick share a `decideMany` call. Default: off. */
   readonly multiState?: boolean;
+  /** Image source kinds to advertise as `imageSources`, e.g. `["url"]`. Default: base64 only. */
+  readonly imageSources?: Backend["imageSources"];
 };
 
 export type MockBackend = Backend & {
@@ -73,6 +75,7 @@ export const mock = (
     manyContexts,
     ...(limits === undefined ? {} : { limits }),
     ...(options?.multiState === true ? { multiState: true as const, decideMany } : {}),
+    ...(options?.imageSources === undefined ? {} : { imageSources: options.imageSources }),
     decide: async (state, questions, context) => {
       calls.push({ state, questions, ...(context === undefined ? {} : { context }) });
       const entries = await Promise.all(

@@ -1,4 +1,4 @@
-import { extractImages, makeAskError } from "askif";
+import { base64Source, extractImages, makeAskError } from "askif";
 import type { Image, Json, Question, QuestionResult } from "askif";
 
 /** JSON value the Decision API accepts inside instructions, criteria, and state. */
@@ -163,10 +163,11 @@ export const prepare = (
     );
   }
   for (const image of found) {
-    if (!IMAGE_TYPES.includes(image.source.mediaType)) {
+    const { mediaType } = base64Source(image, "vercel");
+    if (!IMAGE_TYPES.includes(mediaType)) {
       throw makeAskError(
         "UNSUPPORTED_INPUT",
-        `The Vercel backend sends PNG, JPEG, WebP and GIF images, not ${image.source.mediaType}.`,
+        `The Vercel backend sends PNG, JPEG, WebP and GIF images, not ${mediaType}.`,
       );
     }
   }
@@ -180,11 +181,10 @@ export const prepare = (
 const isJsonArray = (state: HttpState): state is readonly Value[] => Array.isArray(state);
 
 const toSdkState = (state: HttpState, images: readonly Image[]): SdkState => {
-  const files: SdkFilePart[] = images.map((image) => ({
-    type: "file",
-    mediaType: image.source.mediaType,
-    data: image.source.data,
-  }));
+  const files: SdkFilePart[] = images.map((image) => {
+    const { mediaType, data } = base64Source(image, "vercel");
+    return { type: "file", mediaType, data };
+  });
   if (files.length === 0 && typeof state === "string") return state;
   if (files.length === 0 && !isJsonArray(state)) return state;
   const head: SdkPart = typeof state === "string" ? { type: "text", text: state } : { type: "json", value: state };

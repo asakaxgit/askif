@@ -4,11 +4,8 @@ export type Json = string | number | boolean | null | Json[] | { [key: string]: 
 /** What a question is asked about: text, a JSON object, or an array. */
 export type State = Json;
 
-/**
- * Where an image's bytes come from. Only base64 for now; a URL or a bucket object (R2, S3, GCS)
- * would be further kinds, resolved to base64 before a backend that can't fetch them sees them.
- */
-export type ImageSource = {
+/** The image bytes themselves. Build one with `image()`. */
+export type Base64ImageSource = {
   readonly kind: "base64";
   /** e.g. "image/png". */
   readonly mediaType: string;
@@ -16,10 +13,51 @@ export type ImageSource = {
   readonly data: string;
 };
 
-/** An image inside a state. Build one with `image()`. It is plain JSON, so it works anywhere a state does. */
-export type Image = {
+/** An http(s) URL. Build one with `imageUrl()`. */
+export type UrlImageSource = {
+  readonly kind: "url";
+  readonly url: string;
+  /** e.g. "image/png", when known. */
+  readonly mediaType?: string;
+};
+
+export type BucketProvider = "r2" | "s3" | "gcs";
+
+/** An object in a storage bucket. Build one with `bucketImage()`. */
+export type BucketImageSource = {
+  readonly kind: "bucket";
+  readonly provider: BucketProvider;
+  readonly bucket: string;
+  readonly key: string;
+  /** e.g. "image/png", when known. */
+  readonly mediaType?: string;
+};
+
+/** A source askif does not hold the bytes for. `resolveImage` turns one into base64. */
+export type RemoteImageSource = UrlImageSource | BucketImageSource;
+
+/**
+ * Where an image's bytes come from. A backend reads base64, plus the kinds in its
+ * `imageSources`. askif resolves any other kind with `resolveImage` before the backend sees it.
+ */
+export type ImageSource = Base64ImageSource | RemoteImageSource;
+
+export type ImageSourceKind = ImageSource["kind"];
+
+/**
+ * Downloads a remote image for a backend that can't fetch it. Return the bytes, or an
+ * `image()` value when you know the media type better than the source does.
+ * It only receives sources built by `imageUrl()` / `bucketImage()`, never a look-alike from state JSON.
+ */
+export type ResolveImage = (source: RemoteImageSource) => Promise<Image | Uint8Array>;
+
+/**
+ * An image inside a state. Build one with `image()`, `imageUrl()` or `bucketImage()`.
+ * It is plain JSON, so it works anywhere a state does.
+ */
+export type Image<S extends ImageSource = ImageSource> = {
   readonly type: "image";
-  readonly source: ImageSource;
+  readonly source: S;
 };
 
 /** Text the model reads: a plain string, or structured JSON such as `{ what, examples }`. */
@@ -162,6 +200,11 @@ export type Backend = {
    */
   readonly multiState?: boolean;
   /**
+   * Image source kinds this backend reads itself, besides base64 (e.g. `["url"]` for OpenAI).
+   * askif resolves every other kind with `resolveImage` first. Omit it for base64 only.
+   */
+  readonly imageSources?: readonly ImageSourceKind[];
+  /**
    * Answer every question about one state. Keys in the result match keys in `questions`.
    * A value of `{ error }` fails only that question.
    */
@@ -205,6 +248,12 @@ export type AskConfig = {
   readonly maxStatesPerBatch: number;
   /** Default-on input protection. `false` turns all of it off. */
   readonly protection: ProtectionConfig | false;
+  /**
+   * Downloads `imageUrl()` / `bucketImage()` images for a backend that doesn't list that kind in
+   * `imageSources`. Without it, such a state fails with UNSUPPORTED_INPUT. Each distinct source
+   * is resolved once per request.
+   */
+  readonly resolveImage?: ResolveImage;
 };
 
 /** What `createAsk` and `configure` accept. `protection` may be a partial override or `false`. */

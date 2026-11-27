@@ -1,4 +1,4 @@
-import { makeAskError } from "askif";
+import { base64Source, makeAskError } from "askif";
 import type { Image } from "askif";
 
 /** Formats Jev accepts. `image/jpg` is another name for JPEG. WebP and GIF are not accepted. */
@@ -136,11 +136,12 @@ const assertDimensions = (width: number, height: number): void => {
 
 /** Decode one image core already extracted, and reject anything Jev would refuse. */
 export const prepareJevImage = (image: Image): Uint8Array => {
-  const declared = canonical(image.source.mediaType);
+  const source = base64Source(image, "jev");
+  const declared = canonical(source.mediaType);
   if (!ACCEPTED.has(declared)) {
-    fail(`Jev accepts PNG and JPEG only, not ${image.source.mediaType}. Convert it before sending.`);
+    fail(`Jev accepts PNG and JPEG only, not ${source.mediaType}. Convert it before sending.`);
   }
-  const bytes = decodeBase64(image.source.data);
+  const bytes = decodeBase64(source.data);
   if (bytes.byteLength > JEV_IMAGE_LIMITS.maxFileBytes) {
     fail(`Jev rejected an image of ${mib(bytes.byteLength)}. The limit is 16 MiB per image.`);
   }

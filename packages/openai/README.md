@@ -27,6 +27,8 @@ import { image } from "askif";
 await ask.if({ photo: image(bytes) }, "shows a cat");
 ```
 
+`imageUrl(url)` from `askif` sends the URL itself as the `image_url`, and OpenAI fetches it. This applies to OpenAI only, meaning no `baseURL` or `client`, and the backend then advertises `imageSources: ["url"]`. For a compatible endpoint that also fetches URLs, set `openai({ imageUrls: true })`. Otherwise askif downloads the image with the `resolveImage` you give `createAsk` and sends a data URL (see [Images at a URL or in a bucket](https://github.com/asakaxgit/askif#images-at-a-url-or-in-a-bucket)). If you point `OPENAI_BASE_URL` at another endpoint, also set `imageUrls: false`. URL images have not been tried live yet.
+
 Every question carries its images, so N questions about an image send it N times. The request shape follows the SDK's types and is covered by offline tests. `live/openai.test.ts` sends one small fixture image when `OPENAI_API_KEY` is set; that run is not part of `pnpm run check`, and a passing live result is not recorded in this repo yet.
 
 ## How it works
