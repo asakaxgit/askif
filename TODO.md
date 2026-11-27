@@ -4,9 +4,11 @@ Ideas not yet done, roughly in priority order.
 
 ## Reliability of `@askif/openai`
 
-- [ ] Prompt-text fallback: spell out the JSON shape in the prompt (opt-in option, e.g.
-      `structuredOutput: "json_schema" | "json_object" | "prompt"`), so endpoints that ignore or
-      reject `response_format: json_schema` (Ollama, some llama.cpp builds) still work.
+- [x] Prompt-text fallback: `openai({ structuredOutput: "json_object" | "prompt" })` writes the
+      JSON Schema into the prompt for endpoints that ignore or reject `response_format:
+      json_schema` (Ollama, some llama.cpp builds). The default `"json_schema"` body is unchanged.
+- [ ] Run the `structuredOutput` live tests in `live/openai.test.ts`: both modes on OpenAI, and
+      `"prompt"` on a local Ollama (`OLLAMA_BASE_URL`, `OLLAMA_MODEL`). Not run yet.
 - [x] Live smoke test against OpenAI (gpt-6-luna, 2026-09-30): `examples/basic.ts` ran clean, no
       `BAD_RESPONSE`; a yes/no + choice + scale batch took ~2.6 s.
 - [ ] Verify Bedrock accepts `response_format` on its OpenAI-compatible Chat Completions endpoints.
