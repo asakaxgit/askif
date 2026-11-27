@@ -25,6 +25,7 @@ on:
           - openai
           - openrouter
           - vercel
+          - bedrock
 
 permissions:
   contents: read
@@ -84,3 +85,14 @@ jobs:
       name: live @askif/vercel
     secrets:
       AI_GATEWAY_API_KEY: ${{ secrets.AI_GATEWAY_API_KEY }}
+
+  bedrock:
+    name: live Bedrock (OpenAI-compatible)
+    if: github.event_name != 'workflow_dispatch' || github.event.inputs.backend == 'all' || github.event.inputs.backend == 'bedrock'
+    uses: ./.github/workflows/live-backend.yml
+    with:
+      backend: bedrock
+      name: live Bedrock (OpenAI-compatible)
+    secrets:
+      AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}

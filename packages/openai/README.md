@@ -148,19 +148,49 @@ const viaBedrock = openai({
 });
 ```
 
-- `BedrockOpenAI` derives a `bedrock-mantle` endpoint from `awsRegion` if you don't pass `baseURL`;
-  AWS recommends `bedrock-runtime` for new applications, so pass its `baseURL` as above to use that.
-  Model ids differ between the two endpoints (e.g. `openai.gpt-oss-120b-1:0` on `bedrock-runtime`,
-  `openai.gpt-oss-120b` on `bedrock-mantle`).
-- This backend depends on `response_format: json_schema` (Structured Outputs). AWS documents
-  structured outputs for open-weight models on `InvokeModel`/`Converse` and doesn't list the
-  OpenAI-compatible Chat Completions endpoints in that support table either way, so confirm your
-  model and endpoint accept it — a 400 from Bedrock on the first call is the sign they don't.
+- Always pass `baseURL`. Without it, `BedrockOpenAI` (openai SDK 7.23) derives
+  `https://bedrock-mantle.<region>.api.aws/openai/v1` from `awsRegion`, but on `bedrock-mantle` the
+  path prefix depends on the model, and AWS's gpt-oss model cards put those models under `/v1`,
+  "not `/openai/v1`". A request sent to the wrong prefix fails with
+  `` model `<id>` isn't supported on this route ``. Check the model card's **Programmatic Access**
+  table for your model's prefix.
+
+  | Endpoint | `baseURL` | gpt-oss model id |
+  | --- | --- | --- |
+  | `bedrock-runtime` (AWS recommends this one for new applications) | `https://bedrock-runtime.<region>.amazonaws.com/openai/v1` | `openai.gpt-oss-120b-1:0` |
+  | `bedrock-mantle` | `https://bedrock-mantle.<region>.api.aws/v1` | `openai.gpt-oss-120b` |
+- This backend depends on `response_format: json_schema` (Structured Outputs). AWS's
+  structured-output page names `response_format` as the field for open-weight models, but its table
+  of supported APIs lists `InvokeModel` and `Converse`, not the OpenAI-compatible Chat Completions
+  endpoints. This has not been run against Bedrock yet (see [Verification](#verification)). A 400
+  on the first call means your model or endpoint doesn't accept it.
+- Bedrock accepts only a subset of JSON Schema: every object must set `additionalProperties: false`,
+  and numeric or length constraints (`minimum`, `maxLength`, …) are rejected. The schemas this
+  backend sends stay inside that subset, and an offline test checks it.
+- The first request with a new schema can take about 90 seconds while Bedrock compiles a grammar
+  (yes/no, choice, and scale questions are three different schemas, and every new set of options or
+  levels is another one). AWS suggests a client timeout of at least 120 seconds.
 
 See [`examples/backends.ts`](./examples/backends.ts) for all of these together, plus the one
 caveat of using `client` (Azure and Bedrock both): it's constructed eagerly, right there, so —
 unlike the `baseURL` form, which this package constructs lazily on first use — its own validation
 (real-looking credentials) runs immediately rather than being deferred.
+
+## Verification
+
+**Verified** means a live run against the real endpoint passed. **Unverified** means only
+documentation and offline tests stand behind it. The live suites in the repo's `live/` directory
+are skipped unless their credentials are set, and they are not part of `pnpm run check`.
+
+| Endpoint | Status | Evidence |
+| --- | --- | --- |
+| OpenAI, `gpt-6-luna`, text | Verified | Live smoke test, 2026-09-30: no `BAD_RESPONSE`. `live/openai.test.ts` |
+| OpenAI, image input | Unverified | `live/openai.test.ts` sends one fixture image. No passing run recorded yet |
+| Amazon Bedrock, `bedrock-runtime` and `bedrock-mantle` | Unverified | Offline tests cover the request URL, bearer auth, and the schema subset. `live/bedrock.test.ts` (`pnpm run test:live:bedrock`) has not been run yet |
+| Azure OpenAI | Unverified | Documentation only. `examples/backends.ts` builds the client but sends no request |
+| Vertex AI | Unverified | Offline tests in [`@askif/vertex`](../vertex) only |
+| OpenRouter, Gemini | Unverified | Documentation only |
+| Ollama, vLLM, LM Studio, llama.cpp | Unverified | Documentation only (see the table above) |
 
 ## License
 
