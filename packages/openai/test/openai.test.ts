@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { APIError, BedrockOpenAI, OpenAI } from "openai";
-import { confidenceOf, createAsk, image, isAskError } from "askif";
+import { confidenceOf, createAsk, image, imageUrl, isAskError } from "askif";
 import type { Json } from "askif";
 import { openai } from "../src/index.js";
 
@@ -420,6 +420,60 @@ test("a state without images still sends a plain string, and an unsupported form
     () => backend.decide(image("AAAA", "image/tiff"), { q: { kind: "yesno", instructions: "ok?" } }),
     (error) => isAskError(error) && error.code === "UNSUPPORTED_INPUT" && /image\/tiff/.test(error.message),
   );
+});
+
+const imagePartOf = (body: Json | undefined): Json | undefined => {
+  if (!isRecord(body) || !Array.isArray(body["messages"])) return undefined;
+  const user = body["messages"][1];
+  return isRecord(user) && Array.isArray(user["content"]) ? user["content"][1] : undefined;
+};
+
+test("OpenAI itself fetches imageUrl() images; a baseURL or client endpoint does not by default", () => {
+  assert.deepEqual(openai().imageSources, ["url"]);
+  assert.equal(openai({ baseURL: "http://localhost:11434/v1" }).imageSources, undefined);
+  assert.equal(openai({ client: new OpenAI({ apiKey: "test" }) }).imageSources, undefined);
+  assert.deepEqual(openai({ baseURL: "https://example.com/v1", imageUrls: true }).imageSources, ["url"]);
+  assert.equal(openai({ imageUrls: false }).imageSources, undefined);
+});
+
+test("with imageUrls, the URL goes out as the image_url and nothing is downloaded", async () => {
+  const bodies: Json[] = [];
+  const client = routedClient({ yesno_answer: JSON.stringify({ probability: 0.9 }) }, bodies);
+  const ask = createAsk({
+    backend: openai({ client, imageUrls: true }),
+    resolveImage: async () => {
+      throw new Error("must not download");
+    },
+  });
+  assert.equal(await ask.is({ photo: imageUrl("https://example.com/cat.png", "image/png") }, "shows a cat"), true);
+  assert.deepEqual(imagePartOf(bodies[0]), { type: "image_url", image_url: { url: "https://example.com/cat.png" } });
+
+  await assert.rejects(
+    () => openai({ client, imageUrls: true }).decide(imageUrl("https://example.com/a.tif", "image/tiff"), {
+      q: { kind: "yesno", instructions: "ok?" },
+    }),
+    (error) => isAskError(error) && error.code === "UNSUPPORTED_INPUT" && /image\/tiff/.test(error.message),
+  );
+});
+
+test("without imageUrls, resolveImage downloads the URL and a data URL goes out", async () => {
+  const bodies: Json[] = [];
+  const client = routedClient({ yesno_answer: JSON.stringify({ probability: 0.9 }) }, bodies);
+  const png = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  const fetched: string[] = [];
+  const ask = createAsk({
+    backend: openai({ client }),
+    resolveImage: async (source) => {
+      fetched.push(source.kind === "url" ? source.url : source.key);
+      return png;
+    },
+  });
+  assert.equal(await ask.is({ photo: imageUrl("https://example.com/cat.png") }, "shows a cat"), true);
+  assert.deepEqual(fetched, ["https://example.com/cat.png"]);
+  assert.deepEqual(imagePartOf(bodies[0]), {
+    type: "image_url",
+    image_url: { url: `data:image/png;base64,${image(png).source.data}` },
+  });
 });
 
 const yesNoWire = (state: string): string =>

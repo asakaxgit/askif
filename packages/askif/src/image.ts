@@ -1,17 +1,33 @@
 import { makeAskError } from "./errors.js";
-import type { Image, Json } from "./types.js";
+import type { Base64ImageSource, BucketImageSource, BucketProvider, Image, Json, UrlImageSource } from "./types.js";
 
 const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
-/** Whether `value` is an `Image`, as built by `image()`. */
+const BUCKET_PROVIDERS: readonly BucketProvider[] = ["r2", "s3", "gcs"];
+
+const isSource = (source: Readonly<Record<string, unknown>>): boolean => {
+  const optionalType = source["mediaType"] === undefined || typeof source["mediaType"] === "string";
+  switch (source["kind"]) {
+    case "base64":
+      return typeof source["mediaType"] === "string" && typeof source["data"] === "string";
+    case "url":
+      return typeof source["url"] === "string" && optionalType;
+    case "bucket":
+      return (
+        BUCKET_PROVIDERS.some((provider) => provider === source["provider"]) &&
+        typeof source["bucket"] === "string" &&
+        typeof source["key"] === "string" &&
+        optionalType
+      );
+    default:
+      return false;
+  }
+};
+
+/** Whether `value` is an `Image`, as built by `image()`, `imageUrl()` or `bucketImage()`. */
 export const isImage = (value: unknown): value is Image =>
-  isRecord(value) &&
-  value["type"] === "image" &&
-  isRecord(value["source"]) &&
-  value["source"]["kind"] === "base64" &&
-  typeof value["source"]["mediaType"] === "string" &&
-  typeof value["source"]["data"] === "string";
+  isRecord(value) && value["type"] === "image" && isRecord(value["source"]) && isSource(value["source"]);
 
 /** Formats recognised from their first bytes, for `image()` when no media type is given. */
 const sniff = (bytes: Uint8Array): string | undefined => {
@@ -97,7 +113,7 @@ const headOf = (canonical: string): Uint8Array => {
  * `input` is raw bytes, a base64 or base64url string, or a `data:image/...;base64,` URL. For raw bytes and
  * base64, the media type is detected (PNG, JPEG, WebP, GIF) unless you pass it. Stored data is standard base64.
  */
-export const image = (input: Uint8Array | string, mediaType?: string): Image => {
+export const image = (input: Uint8Array | string, mediaType?: string): Image<Base64ImageSource> => {
   let data: string | undefined;
   let type = mediaType;
   if (typeof input === "string") {
@@ -119,18 +135,77 @@ export const image = (input: Uint8Array | string, mediaType?: string): Image => 
   if (data === undefined || !STANDARD_BASE64.test(data)) {
     throw makeAskError("UNSUPPORTED_INPUT", "The image data is empty or not valid base64.");
   }
-  const made: Image = { type: "image", source: { kind: "base64", mediaType: type.toLowerCase(), data } };
+  return trust({ type: "image", source: { kind: "base64", mediaType: type.toLowerCase(), data } });
+};
+
+/** Objects `image()`, `imageUrl()` and `bucketImage()` returned. A JSON look-alike is not in this set. */
+const trustedImages = new WeakSet<object>();
+
+const trust = <S extends Image>(made: S): S => {
   Object.freeze(made.source);
   Object.freeze(made);
   trustedImages.add(made);
   return made;
 };
 
-/** Objects `image()` returned. A JSON look-alike is not in this set. */
-const trustedImages = new WeakSet<object>();
-
-/** True for the object `image()` returned, not for a copy or a parsed look-alike. */
+/** True for the object `image()` (or `imageUrl()`, `bucketImage()`) returned, not for a copy or a parsed look-alike. */
 export const isTrustedImage = (value: object): boolean => trustedImages.has(value);
+
+const checkMediaType = (mediaType: string | undefined): string | undefined => {
+  if (mediaType === undefined) return undefined;
+  if (!MEDIA_TYPE.test(mediaType)) throw makeAskError("UNSUPPORTED_INPUT", `"${mediaType}" is not an image media type.`);
+  return mediaType.toLowerCase();
+};
+
+/**
+ * Makes an image from an http(s) URL. A backend that fetches URLs itself (`imageSources: ["url"]`)
+ * gets the URL; for any other backend, `createAsk({ resolveImage })` downloads it first.
+ */
+export const imageUrl = (url: string, mediaType?: string): Image<UrlImageSource> => {
+  const parsed = URL.canParse(url) ? new URL(url) : undefined;
+  if (parsed === undefined || (parsed.protocol !== "https:" && parsed.protocol !== "http:")) {
+    throw makeAskError("UNSUPPORTED_INPUT", "imageUrl() takes an http or https URL. Use image() for a data URL.");
+  }
+  const type = checkMediaType(mediaType);
+  return trust({ type: "image", source: { kind: "url", url: parsed.href, ...(type === undefined ? {} : { mediaType: type }) } });
+};
+
+/**
+ * Makes an image from an object in an R2, S3 or GCS bucket. No backend reads buckets itself,
+ * so `createAsk({ resolveImage })` downloads it with your credentials.
+ */
+export const bucketImage = (object: {
+  readonly provider: BucketProvider;
+  readonly bucket: string;
+  readonly key: string;
+  readonly mediaType?: string;
+}): Image<BucketImageSource> => {
+  const { provider, bucket, key } = object;
+  if (!BUCKET_PROVIDERS.includes(provider)) {
+    throw makeAskError("UNSUPPORTED_INPUT", `bucketImage() takes provider "r2", "s3" or "gcs", not "${String(provider)}".`);
+  }
+  if (bucket.length === 0 || key.length === 0) {
+    throw makeAskError("UNSUPPORTED_INPUT", "bucketImage() needs a bucket and a key.");
+  }
+  const type = checkMediaType(object.mediaType);
+  return trust({
+    type: "image",
+    source: { kind: "bucket", provider, bucket, key, ...(type === undefined ? {} : { mediaType: type }) },
+  });
+};
+
+/**
+ * The base64 source of an image a backend received, for backends that read only base64.
+ * askif resolves other kinds before `decide`, so this throws only when a backend is called directly.
+ */
+export const base64Source = (found: Image, backend: string): Base64ImageSource => {
+  const { source } = found;
+  if (source.kind === "base64") return source;
+  throw makeAskError(
+    "UNSUPPORTED_INPUT",
+    `The ${backend} backend can't fetch ${source.kind} images. Call it through createAsk with resolveImage.`,
+  );
+};
 
 /** A `{ content_type, base64 }` pair `extractImages` treats as an image in `"auto"` mode. */
 export const isContentImage = (value: unknown): value is { readonly content_type: string; readonly base64: string } =>
@@ -158,7 +233,8 @@ export type ExtractImagesOptions = {
 /**
  * Moves every image out of a state, for backends: each becomes `[image N]` (N from 1, in the order
  * found) and is returned in `images`. Besides `image()` values, it picks up a base64 image data URL
- * string and a `{ content_type, base64 }` object wherever they appear.
+ * string and a `{ content_type, base64 }` object wherever they appear. URL and bucket images are
+ * lifted only from the values `imageUrl()` / `bucketImage()` returned; a look-alike stays text.
  */
 export const extractImages = (
   state: Json,
@@ -166,10 +242,12 @@ export const extractImages = (
 ): { readonly state: Json; readonly images: readonly Image[] } => {
   const images: Image[] = [];
   const start = options?.from ?? 1;
-  const placeholder = (mediaType: string, data: string): string => {
-    images.push({ type: "image", source: { kind: "base64", mediaType: mediaType.toLowerCase(), data } });
+  const lift = (found: Image): string => {
+    images.push(found);
     return `[image ${start + images.length - 1}]`;
   };
+  const placeholder = (mediaType: string, data: string): string =>
+    lift({ type: "image", source: { kind: "base64", mediaType: mediaType.toLowerCase(), data } });
   const explicit = options?.only === "image";
   const walk = (value: Json): Json => {
     if (typeof value === "string") {
@@ -179,8 +257,11 @@ export const extractImages = (
     }
     if (Array.isArray(value)) return value.map(walk);
     if (value !== null && typeof value === "object") {
-      if (isImage(value) && (!explicit || isTrustedImage(value))) {
-        return placeholder(value.source.mediaType, value.source.data);
+      if (isImage(value)) {
+        const { source } = value;
+        const trusted = isTrustedImage(value);
+        if (source.kind === "base64" && (!explicit || trusted)) return placeholder(source.mediaType, source.data);
+        if (source.kind !== "base64" && trusted) return lift({ type: "image", source });
       }
       if (!explicit && isContentImage(value)) return placeholder(value.content_type, value.base64);
       return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, walk(entry)]));
