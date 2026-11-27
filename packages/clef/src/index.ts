@@ -1,7 +1,17 @@
-import { clipUntrusted, createAsk, extractImages, makeAskError } from "askif";
+import { clipUntrusted, createAsk, extractImages, isAskError, makeAskError } from "askif";
 import type { Answer, Backend, DecisionContext, Image, Json, Question } from "askif";
+import { stripJpegMetadataBase64 } from "./jpeg.js";
 
 export type ClefModel = "clef" | "clef-flash";
+
+/**
+ * What to do with JPEG metadata (Exif, XMP, ICC, comments, DPI). Removal is lossless: pixels
+ * are not touched, but Exif orientation goes too.
+ * - "retry": send images as they are; if the REST API answers HTTP 413, send once more without it.
+ * - "strip": always remove it before sending.
+ * - "keep": never touch images.
+ */
+export type ClefImageMetadata = "retry" | "strip" | "keep";
 
 /** What `env.AI` looks like inside a Cloudflare Worker. */
 export type ClefBinding = {
@@ -21,6 +31,8 @@ export type ClefOptions = {
   readonly baseURL?: string;
   /** Default: the global `fetch`. */
   readonly fetch?: typeof fetch;
+  /** Default: "retry". See `ClefImageMetadata`. */
+  readonly imageMetadata?: ClefImageMetadata;
 };
 
 /** Limits documented for Clef: 1-64 questions, 2-255 options, 2-10 levels, up to 4 images. */
@@ -93,6 +105,23 @@ const toClefImages = (images: readonly Image[]): ClefImage[] =>
     }
     return { content_type: source.mediaType, base64: source.data };
   });
+
+/** The images with JPEG metadata removed, or undefined when none of them had any. */
+const withoutMetadata = (images: readonly ClefImage[]): ClefImage[] | undefined => {
+  let changed = false;
+  const stripped = images.map((img) => {
+    const base64 = img.content_type === "image/jpeg" ? stripJpegMetadataBase64(img.base64) : undefined;
+    if (base64 === undefined) return img;
+    changed = true;
+    return { ...img, base64 };
+  });
+  return changed ? stripped : undefined;
+};
+
+const TOO_LARGE = "Clef request failed (HTTP 413)";
+
+const isTooLarge = (error: unknown): boolean =>
+  isAskError(error) && error.code === "BACKEND_FAILED" && error.message.startsWith(TOO_LARGE);
 
 const readProbability = (value: unknown): number | undefined =>
   typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1 ? value : undefined;
@@ -169,7 +198,7 @@ const unwrap = (body: unknown): unknown => {
  * Credentials are read on the first call, so constructing this never fails.
  */
 export const clef = (options: ClefOptions = {}): Backend => {
-  const { model = "clef", binding, baseURL = DEFAULT_BASE_URL } = options;
+  const { model = "clef", binding, baseURL = DEFAULT_BASE_URL, imageMetadata = "retry" } = options;
   const modelId = `@cf/cloudflare/${model}`;
 
   const call = async (input: Readonly<Record<string, unknown>>): Promise<unknown> => {
@@ -218,12 +247,26 @@ export const clef = (options: ClefOptions = {}): Backend => {
         );
       }
       const images = toClefImages(found);
-      const result = await call({
-        model,
-        state: toEntry(text),
-        ...(images.length === 0 ? {} : { images }),
-        questions: Object.fromEntries(Object.entries(questions).map(([id, q]) => [id, toClef(q)])),
-      });
+      const send = (sent: readonly ClefImage[]): Promise<unknown> =>
+        call({
+          model,
+          state: toEntry(text),
+          ...(sent.length === 0 ? {} : { images: sent }),
+          questions: Object.fromEntries(Object.entries(questions).map(([id, q]) => [id, toClef(q)])),
+        });
+      let result: unknown;
+      if (imageMetadata === "strip") {
+        result = await send(withoutMetadata(images) ?? images);
+      } else {
+        try {
+          result = await send(images);
+        } catch (error) {
+          // A small JPEG with Exif/DPI metadata has been refused as too long; see the README.
+          const stripped = imageMetadata === "retry" && isTooLarge(error) ? withoutMetadata(images) : undefined;
+          if (stripped === undefined) throw error;
+          result = await send(stripped);
+        }
+      }
       const answers = isRecord(result) ? result["answers"] : undefined;
       if (!isRecord(answers)) throw makeAskError("BAD_RESPONSE", "Clef returned no answers.");
       return Object.fromEntries(Object.entries(questions).map(([id, q]) => [id, fromClef(q, answers[id])]));

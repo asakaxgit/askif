@@ -357,3 +357,116 @@ test("protection: false keeps the historical Clef body, and errors are clipped",
       isAskError(error) && error.message === `Clef request failed (HTTP 500): ${"z".repeat(200)}`,
   );
 });
+
+const tooLong = (): Response =>
+  new Response(
+    JSON.stringify({
+      success: false,
+      errors: [
+        {
+          code: 3036,
+          message:
+            "estimated number of input and maximum output tokens (152996) exceeded this model context window limit (65536)",
+        },
+      ],
+    }),
+    { status: 413, headers: { "content-type": "application/json" } },
+  );
+
+const jpegFixture = (name: string): Uint8Array =>
+  new Uint8Array(readFileSync(new URL(`./fixtures/public-domain/${name}`, import.meta.url)));
+
+/** Base64 of each image Clef was sent, one array per request. */
+const recordImages = (
+  responses: (() => Response)[],
+): { sent: string[][]; fetch: typeof fetch } => {
+  const sent: string[][] = [];
+  return {
+    sent,
+    fetch: async (_url, init) => {
+      const body: unknown = JSON.parse(String(init?.body));
+      const images = isRecord(body) && Array.isArray(body["images"]) ? body["images"] : [];
+      sent.push(images.map((i) => (isRecord(i) && typeof i["base64"] === "string" ? i["base64"] : "")));
+      const respond = responses[sent.length - 1];
+      assert.ok(respond !== undefined, `unexpected request ${sent.length}`);
+      return respond();
+    },
+  };
+};
+
+const yes = (): Response => envelope({ answers: { q0: { type: "noul", noul: 0.9 } } });
+
+test("after HTTP 413 the Clef backend retries once with JPEG metadata removed", async () => {
+  // dog.jpg has 300 DPI in JFIF and a Photoshop IPTC segment.
+  const original = image(jpegFixture("dog.jpg")).source.data;
+  const { sent, fetch } = recordImages([tooLong, yes]);
+  const ask = createAsk({ backend: clef({ accountId: "a", apiToken: "t", fetch }) });
+
+  assert.equal(await ask.probability({ photo: image(jpegFixture("dog.jpg")) }, "shows a dog"), 0.9);
+  assert.equal(sent.length, 2);
+  assert.deepEqual(sent[0], [original]);
+  const retried = sent[1]?.[0];
+  assert.ok(retried !== undefined && retried !== original);
+  assert.ok(retried.length < original.length);
+});
+
+test("the Clef backend does not retry when the 413 can't be helped or another error happens", async () => {
+  const state = { photo: image(jpegFixture("dog.jpg")) };
+  const q = { q0: { kind: "yesno", instructions: "shows a dog" } } as const;
+  const failed = (status: number) => (error: unknown) =>
+    isAskError(error) && error.code === "BACKEND_FAILED" && error.message.includes(`(HTTP ${status})`);
+
+  // cat.jpg has no metadata to remove.
+  const noMetadata = recordImages([tooLong]);
+  await assert.rejects(
+    () => clef({ accountId: "a", apiToken: "t", fetch: noMetadata.fetch }).decide(
+      { photo: image(jpegFixture("cat.jpg")) },
+      q,
+    ),
+    failed(413),
+  );
+  assert.equal(noMetadata.sent.length, 1);
+
+  const serverError = recordImages([() => new Response("boom", { status: 500 })]);
+  await assert.rejects(
+    () => clef({ accountId: "a", apiToken: "t", fetch: serverError.fetch }).decide(state, q),
+    failed(500),
+  );
+  assert.equal(serverError.sent.length, 1);
+
+  const kept = recordImages([tooLong]);
+  await assert.rejects(
+    () => clef({ accountId: "a", apiToken: "t", fetch: kept.fetch, imageMetadata: "keep" }).decide(state, q),
+    failed(413),
+  );
+  assert.equal(kept.sent.length, 1);
+
+  // Text only: nothing to strip.
+  const text = recordImages([tooLong]);
+  await assert.rejects(() => clef({ accountId: "a", apiToken: "t", fetch: text.fetch }).decide("x", q), failed(413));
+  assert.equal(text.sent.length, 1);
+});
+
+test('imageMetadata "strip" removes JPEG metadata before the first request, also over a binding', async () => {
+  const original = image(jpegFixture("dog.jpg")).source.data;
+  const { sent, fetch } = recordImages([yes]);
+  const backend = clef({ accountId: "a", apiToken: "t", fetch, imageMetadata: "strip" });
+  await backend.decide({ photo: image(jpegFixture("dog.jpg")) }, { q0: { kind: "yesno", instructions: "dog" } });
+  assert.equal(sent.length, 1);
+  assert.notEqual(sent[0]?.[0], original);
+
+  const inputs: unknown[] = [];
+  const bound = clef({
+    imageMetadata: "strip",
+    binding: {
+      run: async (_model, input) => {
+        inputs.push(input);
+        return { answers: { q0: { type: "noul", noul: 0.5 } } };
+      },
+    },
+  });
+  await bound.decide({ photo: image(jpegFixture("dog.jpg")) }, { q0: { kind: "yesno", instructions: "dog" } });
+  const input = inputs[0];
+  assert.ok(isRecord(input) && Array.isArray(input["images"]));
+  assert.equal(sent[0]?.[0], isRecord(input["images"][0]) ? input["images"][0]["base64"] : undefined);
+});

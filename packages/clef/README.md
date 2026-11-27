@@ -27,6 +27,7 @@ const ask = createAsk({
     model: "clef-flash",        // "clef" (default) or "clef-flash"
     accountId: "...",           // default: CLOUDFLARE_ACCOUNT_ID
     apiToken: "...",            // default: CLOUDFLARE_API_TOKEN
+    imageMetadata: "retry",     // default; or "strip" / "keep" (see Known issue under Images)
   }),
 });
 ```
@@ -64,7 +65,15 @@ await ask.if(
 
 Try one of your own photos with `node --env-file=../../.env.local --import tsx examples/try-image.ts photo.jpg "shows a damaged parcel"`. It prints the probability of yes.
 
-**Known issue:** an image can be refused with `HTTP 413 ... estimated number of input and maximum output tokens (...) exceeded this model context window limit (65536)` even when it is small. It happened with a 720x565 JPEG that carried EXIF metadata and 250 DPI (Cloudflare estimated 152,996 tokens); the same picture downscaled to 480 px and re-encoded was accepted and cost a normal number of tokens. The cause was not isolated. If you hit it, downscale and re-encode the image (which also drops metadata). `live/clef.test.ts` probes this on `clef` when the Cloudflare secrets are set: it sends `public-domain/bicycle.jpg` (720×600) with a 250 DPI Exif segment inserted in memory, and accepts either HTTP 413 or a real probability. Any other error fails the job.
+**Known issue: HTTP 413 on a small JPEG.** Clef has refused an image with `HTTP 413 ... estimated number of input and maximum output tokens (...) exceeded this model context window limit (65536)` even though the image was small. It happened with a 720x565 JPEG that carried Exif metadata and 250 DPI. Cloudflare estimated 152,996 tokens, where an image that size normally costs about 400 (see Tokens below). The same picture downscaled to 480 px and re-encoded was accepted at a normal token count.
+
+What we know (2026-11-27, offline, not yet confirmed against the live API):
+- 152,996 is the base64 length of a ~115 KB JPEG, a usual size for 720x565, and has nothing to do with the pixel count. (The original file size was not recorded.) It looks like Cloudflare's pre-flight estimate counted the image as text, i.e. it did not recognise the image.
+- DPI alone is not the trigger. `test/fixtures/public-domain/dog.jpg` records 300 DPI in its JFIF header and has a Photoshop IPTC segment, and it was answered in the 2026-10-06 live run of `examples/images.ts` (all 22 questions). `bicycle.jpg` (JFIF plus a comment) was answered too. Neither has an Exif segment, so Exif is the main suspect.
+
+What the backend does: by default (`imageMetadata: "retry"`), when the REST API answers HTTP 413 and a JPEG in the request has metadata, the backend sends the request once more with that metadata removed: Exif, XMP, ICC profile, IPTC, comments, thumbnails and the JFIF DPI. Removal is lossless: segments are dropped, the image data is copied byte for byte, and the pixels do not change. Exif orientation is dropped with the rest, so a photo that relied on it reaches Clef unrotated. Pass `imageMetadata: "strip"` to remove metadata before every request (use this with a Workers binding, where no HTTP status is seen), or `"keep"` to send images untouched. PNG and WebP are never changed. If the retry is refused too, the 413 is thrown as `BACKEND_FAILED`; downscale and re-encode the image yourself.
+
+`live/clef.test.ts` probes this on `clef` when the Cloudflare secrets are set. It sends `public-domain/bicycle.jpg` (720x600) with a 250 DPI Exif segment inserted in memory, once with `"keep"` and once with the default retry, and its diagnostics say whether the 413 was reproduced and whether removing metadata fixed it.
 
 A base64 `data:image/...` string or a `{ content_type, base64 }` object anywhere in the state is picked up too (`images: "auto"`, the default). Set protection to `images: "explicit"` to lift only `image()` values and leave those strings as text. Each image becomes an `[image 1]`, `[image 2]` placeholder in the state, numbered in the order Clef receives them, so your question can refer to "image 1". More than 4 images, or a format other than PNG/JPEG/WebP, fails with `UNSUPPORTED_INPUT` before any request is sent. Provider error text echoed into an `AskError` is stripped of hidden characters and capped at 200 characters.
 
