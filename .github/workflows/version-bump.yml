@@ -21,6 +21,7 @@ on:
           - "@askif/clef"
           - "@askif/vercel"
           - "@askif/vertex"
+          - "@askif/anthropic"
           - all
         default: all
         required: true

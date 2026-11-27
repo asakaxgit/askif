@@ -255,6 +255,7 @@ The model sees each image where you put it, and your question can refer to it as
 | --- | --- |
 | `@askif/clef` | up to 4: PNG, JPEG, WebP |
 | `@askif/openai` | PNG, JPEG, WebP, GIF (non-animated) |
+| `@askif/anthropic` | up to 100: PNG, JPEG, WebP, GIF |
 | `@askif/jev` | opt-in, up to 64: PNG and JPEG (`jev({ images: true })`; see the [jev README](packages/jev/README.md#images)) |
 | `@askif/vercel` | HTTP: none. `vercelDecide({ images: true })`: PNG, JPEG, WebP, GIF, up to 16 (askif's cap). The default model is text and JSON only. See the [vercel README](packages/vercel/README.md#images) |
 | `@askif/vertex` | Vertex uses the OpenAI row. A call that stays on Jev uses the Jev row. `getAsk()` leaves Jev images off |
@@ -285,7 +286,7 @@ await ask.if({ photo: bucketImage({ provider: "r2", bucket: "returns", key: "202
 - Without `resolveImage`, a URL or bucket image sent to a backend that can't fetch it fails with `UNSUPPORTED_INPUT` before any request. It still counts against `maxImages`.
 - If `resolveImage` throws, the questions about that state fail with `UNSUPPORTED_INPUT` (the error is in `cause`). Other states in the same tick are still sent.
 - askif lifts and resolves only the values that `imageUrl()` / `bucketImage()` returned. A `{ type: "image", source: { kind: "url" } }` look-alike in state JSON stays text and is never fetched, so a user-supplied state can't make your server fetch an address. If URLs come from users, check them in `resolveImage` before you fetch.
-- `@askif/openai` advertises `imageSources: ["url"]` when it talks to OpenAI itself (no `baseURL` or `client`), and passes the URL through. Compatible endpoints are not assumed to fetch URLs. Set `openai({ imageUrls: true })` for one that does. No backend reads buckets directly.
+- `@askif/openai` advertises `imageSources: ["url"]` when it talks to OpenAI itself (no `baseURL` or `client`), and passes the URL through. Compatible endpoints are not assumed to fetch URLs. Set `openai({ imageUrls: true })` for one that does. `@askif/anthropic` does the same against Anthropic itself (`anthropic({ imageUrls })`). No backend reads buckets directly.
 - Backend authors: list the kinds your backend fetches in `imageSources` (base64 is implied). A base64-only backend reads an image with `base64Source(image, name)`, which throws `UNSUPPORTED_INPUT` if the backend was called directly with a remote image. `fallback()` advertises only the kinds both backends read.
 
 Batching compares states by their JSON, computed once per question. A URL or bucket image keeps that key short. With multi-MB base64 states, the key grows with the image, but hashing it would let two different states collide, so askif keeps the exact JSON.
@@ -339,7 +340,7 @@ const viaOpenRouter = createAsk({
 
 For measured tokens and latency across the backends, see [`bench/`](./bench).
 
-See the `Backend` type (from `askif`) to connect another model entirely — `@askif/jev` is just one implementation of it. [`@askif/openai`](./packages/openai) is another, for OpenAI and OpenAI-compatible APIs, [`@askif/clef`](./packages/clef) is a third, for Cloudflare Workers AI's Clef (same System One format as Jev, so questions are batched into one request), [`@askif/vercel`](./packages/vercel) is a fourth, for Vercel AI Gateway's Decision API (`POST /v1/evaluate`, or AI SDK `experimental_decide` via `vercelDecide()`), and [`@askif/vertex`](./packages/vertex) keeps Jev and falls back to Gemini on Vertex AI.
+See the `Backend` type (from `askif`) to connect another model entirely — `@askif/jev` is just one implementation of it. [`@askif/openai`](./packages/openai) is another, for OpenAI and OpenAI-compatible APIs, [`@askif/clef`](./packages/clef) is a third, for Cloudflare Workers AI's Clef (same System One format as Jev, so questions are batched into one request), [`@askif/vercel`](./packages/vercel) is a fourth, for Vercel AI Gateway's Decision API (`POST /v1/evaluate`, or AI SDK `experimental_decide` via `vercelDecide()`), [`@askif/vertex`](./packages/vertex) keeps Jev and falls back to Gemini on Vertex AI, and [`@askif/anthropic`](./packages/anthropic) calls Claude through Anthropic's Messages API.
 
 ### Jev, with Vertex as a fallback
 
@@ -450,7 +451,7 @@ try {
 | `INVALID_QUESTION`    | Too few or too many options or levels, or a duplicate key |
 | `CHAIN_STARTED`       | A chain method was called after the question was sent   |
 | `BACKEND_FAILED`      | The backend call failed. The original error is in `cause` |
-| `BACKEND_UNAVAILABLE` | A backend's own dependency is missing (e.g. `@typesafe-ai/sdk` for `@askif/jev`, `openai` for `@askif/openai`) |
+| `BACKEND_UNAVAILABLE` | A backend's own dependency is missing (e.g. `@typesafe-ai/sdk` for `@askif/jev`, `openai` for `@askif/openai`, `@anthropic-ai/sdk` for `@askif/anthropic`) |
 | `UNSUPPORTED_INPUT`   | The state has something the backend can't take: images for a text-only backend, too many images, an unsupported image format, unreadable image data, a URL or bucket image with no `resolveImage` (or one that failed), or a state over `protection.maxStateChars` |
 | `BAD_RESPONSE`        | The backend's answer did not match the question         |
 
@@ -506,7 +507,7 @@ import { ask as decide } from "@askif/jev";
 
 ## Contributing
 
-This is a [pnpm](https://pnpm.io) workspace with six packages: [`packages/askif`](./packages/askif) (the toolkit), [`packages/jev`](./packages/jev) (the Jev bundle), [`packages/openai`](./packages/openai) (the OpenAI bundle), [`packages/clef`](./packages/clef) (the Cloudflare Clef bundle), [`packages/vercel`](./packages/vercel) (the Vercel AI Gateway Decision API bundle), and [`packages/vertex`](./packages/vertex) (Jev, falling back to Vertex AI). The backend packages depend on `askif`. `@askif/vertex` also depends on `@askif/jev` and `@askif/openai`.
+This is a [pnpm](https://pnpm.io) workspace with seven packages: [`packages/askif`](./packages/askif) (the toolkit), [`packages/jev`](./packages/jev) (the Jev bundle), [`packages/openai`](./packages/openai) (the OpenAI bundle), [`packages/clef`](./packages/clef) (the Cloudflare Clef bundle), [`packages/vercel`](./packages/vercel) (the Vercel AI Gateway Decision API bundle), [`packages/vertex`](./packages/vertex) (Jev, falling back to Vertex AI), and [`packages/anthropic`](./packages/anthropic) (the Anthropic bundle). The backend packages depend on `askif`. `@askif/vertex` also depends on `@askif/jev` and `@askif/openai`.
 
 ```sh
 pnpm install
